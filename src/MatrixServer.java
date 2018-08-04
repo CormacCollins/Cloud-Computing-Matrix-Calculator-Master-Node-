@@ -11,15 +11,6 @@ import java.sql.Date;
 import java.util.ArrayList;
 import java.util.Timer;
 
-enum partition_type {row_column, row_full, data_split };
-
-class JobInfo {
-	public int workerCount;
-	public int matrixSize;
-	public partition_type partitionType;
-}
-
-
 
 public class MatrixServer {
 	protected Socket socket;
@@ -53,7 +44,7 @@ public class MatrixServer {
 				MatrixServer matrixServer = new MatrixServer();
 				matrixServer.setSocket(socket);				
 			
-				CalculationThread calculationThread = new CalculationThread(socket, count);
+				ThreadManager calculationThread = new ThreadManager(socket, count);
 				calculationThread.start();
 				
 				count++;
