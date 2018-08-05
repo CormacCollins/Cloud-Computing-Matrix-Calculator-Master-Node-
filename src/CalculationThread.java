@@ -1,15 +1,44 @@
+import java.lang.invoke.ConstantCallSite;
 import java.net.Socket;
 
 import org.ejml.simple.SimpleMatrix;
 
 public class CalculationThread extends Thread implements MatrixPartitionOperations {
 
-		private JobInfo jbInfo;
-		private ThreadManager master;
+		private int thrId;
+		private int aRowStart; 
+		private int aRowEnd; 
+		private int bColStart; 
+		private int bColEnd;
+		private partition_type pType;
 		
-	    public CalculationThread(JobInfo jb, ThreadManager man) {
-	    	jbInfo = jb;	    	
-	    	master = man;
+		// ----------------------------------------------------------------------------//
+		// Different consturctors for diff calcs - the thread will only operate once 
+		// before it closes so there will be no risk of getting the wrong property
+		
+		
+		
+	    public CalculationThread(int aRowStart, int bColStart, partition_type type, int id) {
+	    	this.aRowStart = aRowStart;
+	    	this.bColStart = bColStart;
+	    	pType = type;
+	    	thrId = id;
+	    }
+	    
+	    public CalculationThread(ThreadManager man, int aRowStart, partition_type type, int id) {
+	    	this.aRowEnd = aRowStart;
+	    	pType = type;
+	    	thrId = id;
+	    }
+	    
+	    public CalculationThread(int aRowStart, int aRowEnd, int bColStart, int bColEnd, 
+	    		partition_type type, int id) {
+	    	this.aRowEnd = aRowEnd;
+	    	this.aRowEnd = aRowEnd;
+	    	this.bColStart = bColStart;
+	    	this.bColEnd = bColEnd;
+	    	pType = type;
+	    	thrId = id;
 	    }
 	   
 	    
@@ -22,69 +51,47 @@ public class CalculationThread extends Thread implements MatrixPartitionOperatio
 	   //Thinking about planning the shared data etc.
 	   // -------------------------------------------------------------
 	    public void run() {	    		    	
-	    	switch (jbInfo.partitionType) {
+	    	switch (pType) {
 			case row_column:
-					singleVectorOpp 			
+					//only need start of each because just doing 1 calc
+				row_column(aRowStart, bColStart); 			
 				break;
 			case row_full:
-				fullRowCalc
-					break;
+				//Only need row for a - as we are doing a full calc against each col in b
+				row_full(aRowStart);
+				break;
 			case data_split:
-					blockPartioning(a, b, workerNum)				
+				//Need exact locations to calc on a and b
+				data_split(aRowStart, aRowEnd, bColStart, bColEnd);
 				break;
 			case none:		
 				break;
 			}
-	    	
-	    	
-//	    	System.out.println("Reading client request");				
-			// read the message from client and parse the execution
-//			String line = "Error in";
-//			try {
-//				line = reader.readLine();
-//			} catch (IOException e1) {
-//				// TODO Auto-generated catch block
-//				e1.printStackTrace();
-//			}
-//			System.out.println(line + " size matrix requested");		
-	    	
-			// read the message from client and parse the execution
-			
-	    	
-//	    	System.out.println("Thread " + thId + " is sleeping thread for 5 seconds...");
-//	            	try {
-//						sleep(5000);
-//						
-//
-//						
-//	            	} catch (InterruptedException e) {
-//						// TODO Auto-generated catch block
-//						e.printStackTrace();
-//					} finally {
-//						
-//					}
-//	            	
-//	            	System.out.println("Thread " + thId + " finished sleeping");
 	    }
 
 
 		@Override
-		public SimpleMatrix singleVectorOpp(SimpleMatrix a, SimpleMatrix b, int rowColNumber) {
-			// TODO Auto-generated method stub
+		public SimpleMatrix row_column(int i, int j) {
+			SimpleMatrix aRow = ThreadManager.getMatrixARows(i, i+1);
+			SimpleMatrix bCol =ThreadManager.getMatrixBColumns(j, j+1).transpose();
+			SimpleMatrix reSimpleMatrix = new SimpleMatrix(1,1);
+			double sum = aRow.dot(bCol);
+			reSimpleMatrix.set(0, 0, sum);
+			System.out.println("Thread number " +thrId + " Just calculated a single row_col sum: " + sum);
 			return null;
 		}
 
 
 		@Override
-		public SimpleMatrix fullRowCalc(SimpleMatrix a, SimpleMatrix b, int workerNum) {
-			// TODO Auto-generated method stub
+		public SimpleMatrix row_full(int row) {
+			System.out.println("Thread number " +thrId + " Just calculated a full row");
 			return null;
 		}
 
 
 		@Override
-		public SimpleMatrix blockPartioning(SimpleMatrix a, SimpleMatrix b, int workerNum) {
-			// TODO Auto-generated method stub
+		public SimpleMatrix data_split(int aRowStart, int aRowEnd, int bColStart, int bColEnd) {
+			System.out.println("Thread number " +thrId + " Just calculated a segment of data");
 			return null;
 		}
 	}

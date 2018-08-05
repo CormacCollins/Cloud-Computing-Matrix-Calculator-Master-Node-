@@ -95,12 +95,6 @@ public class MatrixServer {
 			e.printStackTrace();
 		}
 	}
-	//TODO implement
-	public JobInfo workAmount(String[] args) {
-		return new JobInfo();
-	}
-	
-	
 	
 
 }

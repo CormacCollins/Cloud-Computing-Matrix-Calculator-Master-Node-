@@ -35,7 +35,7 @@ public class MatrixClient {
 	private void setMatrixSize(int n) throws IOException {
 		System.out.println("Requesting size " + n);
 		BufferedWriter writer = new BufferedWriter(out);
-		writer.write(Integer.toString(n));
+		writer.write("row_column" + ":" + Integer.toString(n));
 		writer.newLine();
 		writer.flush();
 	}
@@ -82,7 +82,7 @@ public class MatrixClient {
 		MatrixClient client = new MatrixClient(hostname, port);
 		int matrixSize = 2; 
 		MatrixResult result = client.calculate("matrix-mul", matrixSize);
-		System.out.println("Result recieved: error code = " + result.errorcode);		
+//		System.out.println("Result recieved: error code = " + result.errorcode);		
 		
 	}
 

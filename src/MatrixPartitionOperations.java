@@ -4,10 +4,13 @@ import org.ejml.simple.SimpleMatrix;
 
 public interface MatrixPartitionOperations {
 	//Cyclicv1
-	public SimpleMatrix singleVectorOpp(SimpleMatrix a, SimpleMatrix b, int rowColNumber);
+	//Calcs 1 row in A by 1 column in B - at ith row jth column
+	public SimpleMatrix row_column(int i, int j);
 	//Cyclicv2
-	public SimpleMatrix fullRowCalc(SimpleMatrix a, SimpleMatrix b, int workerNum);
+	//Calcs 1 row in A by all cols in B - at row i
+	public SimpleMatrix row_full(int row);
 	//blockv1
-	public SimpleMatrix blockPartioning(SimpleMatrix a, SimpleMatrix b, int workerNum);
+	//Calcs a block of row by cols - using row start aStart to aEnd and using column bColStart and bColEnd
+	public SimpleMatrix data_split(int aRowStart, int aRowEnd, int bColStart, int bColEnd);
 	
 }

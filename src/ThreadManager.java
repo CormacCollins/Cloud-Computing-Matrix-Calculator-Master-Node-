@@ -7,6 +7,11 @@ import java.net.Socket;
 import java.util.ArrayList;
 import java.util.function.ToIntFunction;
 
+import javax.naming.spi.DirStateFactory.Result;
+
+import org.ejml.equation.Variable;
+import org.ejml.simple.SimpleMatrix;
+import org.junit.experimental.theories.Theories;
 import org.junit.platform.commons.util.PreconditionViolationException;
 
 // ----------------------------------------------- //
@@ -16,29 +21,79 @@ import org.junit.platform.commons.util.PreconditionViolationException;
 
 enum partition_type {row_column, row_full, data_split, none };
 
-class JobInfo {
-	public int workerCount;
-	public int matrixSize;
-	public partition_type partitionType;
-}
 
 public class ThreadManager extends Thread  {
+	//Socket information
     private Socket socket;
     private ObjectInputStream in;
     private ObjectOutputStream out;
-    private int thId;
+    private int thrdManagerId;
     private BufferedReader reader;
+    
+    private ArrayList<CalculationThread> workerList = new ArrayList<>();
+    
+    //Matrix information
+	public int idCount;
+	private static int matrixSize;
+	private partition_type partitionType;
+	private static SimpleMatrix aMatrix;
+	private static SimpleMatrix bMatrix;	
+	private static double[][] result;
     
 	public ThreadManager(Socket s, int threadid) throws IOException {
         socket = s;
         // will close it.
-        thId = threadid;	        
+        thrdManagerId = threadid;	        
         out = new ObjectOutputStream(socket.getOutputStream());
         
         reader = new BufferedReader(
 				new InputStreamReader(socket.getInputStream()));
 		
 	}
+	
+	
+	//returns matrix of requested segments from 
+	 public static synchronized SimpleMatrix getMatrixARows(int rowStart, int rowEnd) {
+		 double arr[][] = new double[rowEnd-rowStart][matrixSize];
+		 int arrRowIndex = 0;
+		 for(int i = rowStart; i < rowEnd; i++) {
+			 for(int j = 0; j < matrixSize; j++) {
+				 arr[arrRowIndex][j]= aMatrix.get(i, j);
+			 }
+			 arrRowIndex++;
+		 }
+		 
+		 return new SimpleMatrix(arr);
+	 }
+	 
+	 public static synchronized SimpleMatrix getMatrixBColumns(int bColStart, int bColEnd) {
+		 double arr[][] = new double[bColEnd - bColStart][matrixSize];
+		 int arrColIndex = 0;
+		 for(int i = bColStart; i < bColEnd; i++) {
+			 for(int j = 0; j < matrixSize; j++) {
+				 //shifting down through rows of a column
+				 arr[arrColIndex][j] = bMatrix.get(j, i);
+			 }
+			 arrColIndex++;
+		 }
+		 
+		 //transpose back to a column
+		 return new SimpleMatrix(arr).transpose();
+	 }
+	
+	 ///the arr size:  row = rowEnd - rowStart and the col = colEnd - colStart
+	 public static synchronized void addToResMatrix(SimpleMatrix arr, int rowStart, int rowEnd, int colStart, int colEnd) {
+		 int arrColIndex = 0;
+		 int arrRowIndex = 0;
+		 for(int i = rowStart; i < rowEnd; i++) {
+			 for(int j = colStart; j < colEnd; j++) {
+				 //shifting down through rows of a column
+				 result[i][j] = arr.get(arrRowIndex, arrColIndex);
+				 arrColIndex++;
+			 }
+			 arrRowIndex++;
+		 }
+	 }
 	
 	public void run() {	
 		String line = "";
@@ -50,12 +105,29 @@ public class ThreadManager extends Thread  {
 		}
 		System.out.println("Size recieved " + line);
 
-		JobInfo jobInfo = parseRequest(line);
-		calcWorkerNumber(jobInfo);
+		//Get info from client string
+		parseRequest(line);
+		
+		idCount = thrdManagerId; //Thread manager is the first thread id   -- also because thrdManager could be 1 of many clients
+		idCount++;
+		
+		//Setup the result matrix that all threads will be accessing
+		result = new double[matrixSize][matrixSize];
+		
+		workerList = initWorkers();		
     	
-    	System.out.println("Writing result");
-    	int a[][] = {{1}, {2}};
-    	MatrixResult obj = new MatrixResult(a, 5);
+		System.out.println("Running workers");
+		
+		//Setup static matrices
+    	int a[][] = {{1,1}, {2,1}};
+    	double ab[][] = {{1,1}, {2,1}};
+    	SimpleMatrix m1 = new SimpleMatrix(ab);
+    	SimpleMatrix m2 = new SimpleMatrix(ab);
+    	aMatrix = m1;
+    	bMatrix = m2;    	
+    	
+    	//returns matrix result with error code attached
+    	MatrixResult obj = calculate();
     	try {
 			out.writeObject(obj);
 
@@ -78,87 +150,141 @@ public class ThreadManager extends Thread  {
 		
 	}
 	
-	public JobInfo parseRequest(String clientReq) {
-		JobInfo jobInfo = new JobInfo();
+	/// Instantiates the correct number of threads relative to the calculation type
+	/// this involves allocating row and column information for them to work on 
+	/// important to note - this is not shared data as each thread should be 
+	/// operating on different parts of the matrix anyway
+	public ArrayList<CalculationThread> initWorkers(){
+		ArrayList<CalculationThread> workers = new ArrayList<CalculationThread>();
+		
+		//adds the required n to jobinfo
+		//calcWorkerNumber(jbInfo);
+		switch (partitionType) {
+		case row_column:
+			for (int i = 0; i < matrixSize; i++) {
+				for(int j = 0; j < matrixSize; j++) {
+					
+					//Add a new thread, increment the count, add it to the manager list
+					//JobInfo copy = jbInfo.copy();
+					
+					CalculationThread newThrd = new CalculationThread(i,j, partitionType, idCount); 
+					idCount++;
+					workers.add(newThrd);					
+					
+				}
+			}
+			break;
+		case row_full:
+			for(int i = 0; i < matrixSize; i++) {
+				//one thread for each row calc on A
+				CalculationThread newThrd1 = new CalculationThread(this, i, partitionType, idCount);
+				idCount++;
+				workers.add(newThrd1);					
+			}
+			break;
+		case data_split:
+			//Essentially splitting the matrix into quarters for now (as in the specs)
+			int size = (matrixSize) / 2; 
+			for(int i = 0; i < matrixSize; i += size) {
+				//once a segment of rows form matrix b is calculated, then we continue using
+				// the ith row in matrix a to calc the next column segment in b
+				int bSegments = size/2;
+				while(bSegments != 0) {
+					for(int j = 0; j < size; j++) {
+							CalculationThread newThrd1 = 
+									new CalculationThread(i, i + (size-1), j, j + (size-1), partitionType, idCount);   
+							idCount++;
+							workers.add(newThrd1);	
+						}
+					bSegments--;
+				}
+			}
+			break;
+		case none:		
+			break;
+		}
+		
+		return workers;
+		
+	}
+	
+	/// Takes matrix size and partitioning type form client request
+	public void parseRequest(String clientReq) {
 		String arr[] = clientReq.split(":");
 		if(arr.length != 2) {
 			System.out.println("Incorrect parameters: needs 'calculationYype'-'matrixSize' ");
-			jobInfo.partitionType = partition_type.none;
-			return new JobInfo();
+			partitionType = partition_type.none;	
 		}
-		
-		//Setup job information
+
 		
 		String partType = arr[0];
 		switch(partType) {
-			case "row_column": jobInfo.partitionType = partition_type.row_column;
+			case "row_column": partitionType = partition_type.row_column;
 								break;
-			case "row_full": jobInfo.partitionType = partition_type.row_full;
+			case "row_full":  partitionType = partition_type.row_full;
 								break;
-			case "data_split": jobInfo.partitionType = partition_type.data_split;
+			case "data_split": partitionType = partition_type.data_split;
 								break;
-			default: jobInfo.partitionType = partition_type.none;
+			default: partitionType = partition_type.none;
 					break;				
 		}
 		
-		int matrixSize = Integer.parseInt(arr[1]);
-		jobInfo.matrixSize = matrixSize;
-		
-		return jobInfo;
-		
+		matrixSize = Integer.parseInt(arr[1]);
 	}
 	
 	//Based on current set requirements we will select how many worker threads we want to create
-	private void calcWorkerNumber(JobInfo jbInfo) {
-		int workerCount = 0;
-		switch (jbInfo.partitionType) {
-		case row_column:
-				workerCount = jbInfo.matrixSize * jbInfo.matrixSize; //n * n calcs (1 worker for each) 			
-			break;
-		case row_full:
-			workerCount = jbInfo.matrixSize; //1 worker per matrix row to complete
-				break;
-		case data_split:
-			workerCount = (jbInfo.matrixSize * jbInfo.matrixSize) / 4; 
-			//For now the partition will be in quarters - an n * n will always be an even number too!
-			break;
-		case none:
-			workerCount = 0;			
-			break;
-		}
-		
-		jbInfo.workerCount = workerCount;	
-		
-	}
+//	private void calcWorkerNumber(JobInfo jbInfo) {
+//		int workerCount = 0;
+//		switch (jbInfo.partitionType) {
+//		case row_column:
+//				workerCount = jbInfo.matrixSize * jbInfo.matrixSize; //n * n calcs (1 worker for each) 			
+//			break;
+//		case row_full:
+//			workerCount = jbInfo.matrixSize; //1 worker per matrix row to complete
+//				break;
+//		case data_split:
+//			workerCount = (jbInfo.matrixSize * jbInfo.matrixSize) / 4; 
+//			//For now the partition will be in quarters - an n * n will always be an even number too!
+//			break;
+//		case none:
+//			workerCount = 0;			
+//			break;
+//		}
+//		
+//		jbInfo.idCount = workerCount;	
+//		
+//	}
 	
 	//Create list of threads that have been given the job info, this will influence the calculation method they call when they are run()
-	private ArrayList<CalculationThread> getWorkers(JobInfo jbInfo){
+//	private ArrayList<CalculationThread> getWorkers(JobInfo jbInfo){
 		
-		ArrayList<CalculationThread> workers = new ArrayList<CalculationThread>();
-		for(int i = 0; i < jbInfo.workerCount; i++) {
-			CalculationThread thread = new CalculationThread(jbInfo, this);
-			workers.add(thread);
-		}
+//		int arr[]
+//		
+//		ArrayList<CalculationThread> workers = new ArrayList<CalculationThread>();
+//		for(int i = 0; i < jbInfo.workerCount; i++) {
+//			CalculationThread thread = new CalculationThread(jbInfo, this);
+//			workers.add(thread);
+//		}
 		
-		return new ArrayList<CalculationThread>();
-	}
-	
+//		return new ArrayList<CalculationThread>();
+//	}
+//	
 	
 	private void startWorkers(ArrayList<CalculationThread> workers) {
 		for (CalculationThread calculationThread : workers) {
-			calculationThread.start();
+			calculationThread.run();
 		}		
 	} 
 	
-	private MatrixResult calculate(JobInfo jbInfo) {
-		ArrayList<CalculationThread> workers;
-		int errorcode;
-		int answer[][];
-		//the workers will use the approppriately request calculation
-		workers = getWorkers(jbInfo);
-		startWorkers(workers);
+	private MatrixResult calculate() {
+		int errorcode = 0;
 		
-		return new MatrixResult(ans, errCode);
+		int answer[][] = {{1,2}, {1,2}};
+		//the workers will use the approppriately request calculation
+		//workers = getWorkers(jbInfo);
+		startWorkers(workerList);
+		System.out.println("Returning placeholder matrix");
+		return new MatrixResult(answer, errorcode);
 	}
 	
 	
