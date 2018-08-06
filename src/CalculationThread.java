@@ -3,7 +3,7 @@ import java.net.Socket;
 
 import org.ejml.simple.SimpleMatrix;
 
-public class CalculationThread extends Thread implements MatrixPartitionOperations {
+public class CalculationThread extends Thread  {
 
 		private int thrId;
 		private int aRowStart; 
@@ -16,20 +16,23 @@ public class CalculationThread extends Thread implements MatrixPartitionOperatio
 		// Different consturctors for diff calcs - the thread will only operate once 
 		// before it closes so there will be no risk of getting the wrong property
 		
-		
-		
-	    public CalculationThread(int aRowStart, int bColStart, partition_type type, int id) {
-	    	this.aRowStart = aRowStart;
-	    	this.bColStart = bColStart;
-	    	pType = type;
-	    	thrId = id;
-	    }
-	    
-	    public CalculationThread(ThreadManager man, int aRowStart, partition_type type, int id) {
-	    	this.aRowEnd = aRowStart;
-	    	pType = type;
-	    	thrId = id;
-	    }
+//		public CalculationThread( partition_type type, int id) {
+//	    	pType = type;
+//	    	thrId = id;
+//		}
+//		
+//	    public CalculationThread(int aRowStart, int bColStart, partition_type type, int id) {
+//	    	this.aRowStart = aRowStart;
+//	    	this.bColStart = bColStart;
+//	    	pType = type;
+//	    	thrId = id;
+//	    }
+//	    
+//	    public CalculationThread(ThreadManager man, int aRowStart, partition_type type, int id) {
+//	    	this.aRowEnd = aRowStart;
+//	    	pType = type;
+//	    	thrId = id;
+//	    }
 	    
 	    public CalculationThread(int aRowStart, int aRowEnd, int bColStart, int bColEnd, 
 	    		partition_type type, int id) {
@@ -50,48 +53,28 @@ public class CalculationThread extends Thread implements MatrixPartitionOperatio
 	   //TODO:
 	   //Thinking about planning the shared data etc.
 	   // -------------------------------------------------------------
-	    public void run() {	    		    	
-	    	switch (pType) {
-			case row_column:
-					//only need start of each because just doing 1 calc
-				row_column(aRowStart, bColStart); 			
-				break;
-			case row_full:
-				//Only need row for a - as we are doing a full calc against each col in b
-				row_full(aRowStart);
-				break;
-			case data_split:
-				//Need exact locations to calc on a and b
-				data_split(aRowStart, aRowEnd, bColStart, bColEnd);
-				break;
-			case none:		
-				break;
-			}
+	    public void run() {	    	
+	    	double[] jobData = ThreadManager.getJob();
+	    	SimpleMatrix res = calc(jobData[0], jobData[1], jobData[2], jobData[3]);
+	    	ThreadManager.addToResMatrix(res, jobData[0], jobData[3]);
+	    	
+	    	
 	    }
 
-
-		@Override
-		public SimpleMatrix row_column(int i, int j) {
-			SimpleMatrix aRow = ThreadManager.getMatrixARows(i, i+1);
-			SimpleMatrix bCol =ThreadManager.getMatrixBColumns(j, j+1).transpose();
-			SimpleMatrix reSimpleMatrix = new SimpleMatrix(1,1);
-			double sum = aRow.dot(bCol);
-			reSimpleMatrix.set(0, 0, sum);
-			System.out.println("Thread number " +thrId + " Just calculated a single row_col sum: " + sum);
-			return null;
+	    //requires only the mul of | (n by m) * (m by n)|
+		public SimpleMatrix calc(int aRowStart, int aColStart, int bRowStart, int bColstart) {
+			double rows[][] = ThreadManager.getMatrixARows(aRowStart, aColStart);
+			SimpleMatrix aMatrix = new SimpleMatrix(rows);
+			double cols[][] =ThreadManager.getMatrixBColumns(bRowStart, bColstart);
+			SimpleMatrix bMatrix = new SimpleMatrix(rows);
+			SimpleMatrix res = new SimpleMatrix(rows.length, cols.length); //square matrix
+			
+			
+			//check outputs of matrix first
+			res = aMatrix.mult(bMatrix.transpose());
+			
+			return res;
 		}
 
 
-		@Override
-		public SimpleMatrix row_full(int row) {
-			System.out.println("Thread number " +thrId + " Just calculated a full row");
-			return null;
-		}
-
-
-		@Override
-		public SimpleMatrix data_split(int aRowStart, int aRowEnd, int bColStart, int bColEnd) {
-			System.out.println("Thread number " +thrId + " Just calculated a segment of data");
-			return null;
-		}
 	}

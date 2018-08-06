@@ -1,3 +1,4 @@
+import java.awt.font.NumericShaper.Range;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -5,6 +6,7 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
 import java.util.ArrayList;
+import java.util.Map;
 import java.util.function.ToIntFunction;
 
 import javax.naming.spi.DirStateFactory.Result;
@@ -40,6 +42,14 @@ public class ThreadManager extends Thread  {
 	private static SimpleMatrix bMatrix;	
 	private static double[][] result;
 	private int workerReqSize;
+	//where is the next part fo the matrices to be processed
+	private static int currentRowA;
+	private static int currentColA;
+	private static int currentRowB;
+	private static int currentColB;
+	private static int[] calcRangeRowbyCol = new int[2];
+	private static int rowSize;
+	private static int colSize;
     
 	public ThreadManager(Socket s, int threadid, int workerRequest ) throws IOException {
         socket = s;
@@ -53,42 +63,82 @@ public class ThreadManager extends Thread  {
 		
 	}
 	
+	 
+	 public static synchronized int[] getJob() {
+		 int arr[] = {currentRowA, currentColA, currentRowB, currentColB};
+		 currentRowA += rowSize;
+		 currentColA += colSize; //will actually always be 0
+		 currentRowB += rowSize;
+		 currentColB += colSize; // will also always be 0		 
+		 //then increment them -- think if this is what you want
+		 
+		 return arr;
+	 }
 	
 	//returns matrix of requested segments from 
-	 public static synchronized SimpleMatrix getMatrixARows(int rowStart, int rowEnd) {
-		 double arr[][] = new double[rowEnd-rowStart][matrixSize];
-		 int arrRowIndex = 0;
-		 for(int i = rowStart; i < rowEnd; i++) {
-			 for(int j = 0; j < matrixSize; j++) {
-				 arr[arrRowIndex][j]= aMatrix.get(i, j);
-			 }
-			 arrRowIndex++;
-		 }
+	 public static synchronized double[][] getMatrixARows(int currentRowA, int currentColA) {
 		 
-		 return new SimpleMatrix(arr);
+		 
+		 double arr[][] = new double[rowSize][colSize];
+		 int counti = 0;
+		 int countj = 0;
+		 int i = 0;
+		 int j = 0;
+		 for(i = currentRowA; i < (currentRowA + rowSize); i++) {
+			 //break incase this data partition is a residual row in uneven distribution of segments
+			 if(i== (matrixSize-1)) {
+				 break;
+			 }
+			 
+			 for(j = currentColA; j < (currentColA + colSize); j++) {
+				 
+				 arr[counti][countj++]= aMatrix.get(i, j);
+			 }
+			 counti++;
+		 }
+//
+//		 //get last row 
+//		 currentRowA += i;
+//		 //reset column (we always fully calc a column)
+//		 currentColA = 0;
+		 
+		 
+		 return arr;
 	 }
+
+			
 	 
-	 public static synchronized SimpleMatrix getMatrixBColumns(int bColStart, int bColEnd) {
-		 double arr[][] = new double[bColEnd - bColStart][matrixSize];
-		 int arrColIndex = 0;
-		 for(int i = bColStart; i < bColEnd; i++) {
-			 for(int j = 0; j < matrixSize; j++) {
-				 //shifting down through rows of a column
-				 arr[arrColIndex][j] = bMatrix.get(j, i);
-			 }
-			 arrColIndex++;
-		 }
+	 public static synchronized double[][] getMatrixBColumns(int currentRowB, int currentColB) {
+		 double arr[][] = new double[rowSize][colSize];
+		 int counti = 0;
+		 int countj = 0;
+		 int i = 0;
+		 int j = 0;
 		 
-		 //transpose back to a column
-		 return new SimpleMatrix(arr).transpose();
+		 for(j = currentColB; j < (currentColB + colSize); j++) {
+			 if(j== (matrixSize-1)) {
+				 break;
+			 }
+			 for(i = currentRowB; i < (currentRowB + rowSize); i++) {
+				 //break incase this data partition is a residual col in uneven distribution of segments
+				 arr[counti][countj++]= aMatrix.get(i, j);
+			 }
+			 counti++;
+		 }
+ 
+		 
+		 return arr;
 	 }
 	
+	 //NEED TO KNOW WHERE TO PUT IT -- FROM WHICH CALC
+	 
+	 
 	 ///the arr size:  row = rowEnd - rowStart and the col = colEnd - colStart
-	 public static synchronized void addToResMatrix(SimpleMatrix arr, int rowStart, int rowEnd, int colStart, int colEnd) {
+	 public static synchronized void addToResMatrix(SimpleMatrix arr, int rowStart, int colStart) {
 		 int arrColIndex = 0;
 		 int arrRowIndex = 0;
-		 for(int i = rowStart; i < rowEnd; i++) {
-			 for(int j = colStart; j < colEnd; j++) {
+		 for(int i = rowStart; i < (rowStart + rowSize) ; i++) {
+			 for(int j = colStart; j < (colStart + colSize); j++) {
 				 //shifting down through rows of a column
 				 result[i][j] = arr.get(arrRowIndex, arrColIndex);
 				 arrColIndex++;
@@ -158,56 +208,94 @@ public class ThreadManager extends Thread  {
 	/// operating on different parts of the matrix anyway
 	public ArrayList<CalculationThread> initWorkers(){
 		ArrayList<CalculationThread> workers = new ArrayList<CalculationThread>();
+
+
+		int range = matrixSize / workerReqSize;
+		int count = workerReqSize;
+		int residual = workerReqSize % 4;
+			switch (partitionType) {
+			case row_column:
+				while(count > 0) {
+					for(int i = 0; i < range; i++) {
+						for(int j = 0; j < matrixSize; j++)
+							CalculationThread thread = new CalculationThread(1, range, 1, range, partitionType, idCount);
+							idCount++;
+							workers.add(thread);
+					}
+				}
+				
+				if(residual > 0) {
+					
+				}
+					//only need start of each because just doing 1 calc
+				calcRangeRowbyCol[0] = 1;
+				calcRangeRowbyCol[1] = 1;
+				break;
+			case row_full:
+				calcRangeRowbyCol[0] = 1;
+				calcRangeRowbyCol[1] = matrixSize;
+				break;
+			case data_split:
+				int residual = workerReqSize % 4;
+				int range = (int)workerReqSize / matrixSize;
+				
+				calcRangeRowbyCol[0] = 1;
+				calcRangeRowbyCol[1] = range;
+				break;
+			case none:		
+				break;
+			}
+		
 		
 		//adds the required n to jobinfo
 		//calcWorkerNumber(jbInfo);
-		switch (partitionType) {
-		case row_column:
-			for (int i = 0; i < matrixSize; i++) {
-				for(int j = 0; j < matrixSize; j++) {
-					
-					//Add a new thread, increment the count, add it to the manager list
-					//JobInfo copy = jbInfo.copy();
-					
-					CalculationThread newThrd = new CalculationThread(i,j, partitionType, idCount); 
-					idCount++;
-					workers.add(newThrd);					
-					
-				}
-			}
-			break;
-		case row_full:
-			for(int i = 0; i < matrixSize; i++) {
-				//one thread for each row calc on A
-				CalculationThread newThrd1 = new CalculationThread(this, i, partitionType, idCount);
-				idCount++;
-				workers.add(newThrd1);					
-			}
-			break;
-		case data_split:
-			//Uneven row num??????????????????????????
-			
-			
-			//Essentially splitting the matrix into quarters for now (as in the specs)
-			int size = (matrixSize) / 2; 
-			for(int i = 0; i < matrixSize; i += size) {
-				//once a segment of rows form matrix b is calculated, then we continue using
-				// the ith row in matrix a to calc the next column segment in b
-				int bSegments = size/2;
-				while(bSegments != 0) {
-					for(int j = 0; j < size; j++) {
-							CalculationThread newThrd1 = 
-									new CalculationThread(i, i + (size-1), j, j + (size-1), partitionType, idCount);   
-							idCount++;
-							workers.add(newThrd1);	
-						}
-					bSegments--;
-				}
-			}
-			break;
-		case none:		
-			break;
-		}
+//		switch (partitionType) {
+//		case row_column:
+//			for (int i = 0; i < matrixSize; i++) {
+//				for(int j = 0; j < matrixSize; j++) {
+//					
+//					//Add a new thread, increment the count, add it to the manager list
+//					//JobInfo copy = jbInfo.copy();
+//					
+//					CalculationThread newThrd = new CalculationThread(i,j, partitionType, idCount); 
+//					idCount++;
+//					workers.add(newThrd);					
+//					
+//				}
+//			}
+//			break;
+//		case row_full:
+//			for(int i = 0; i < matrixSize; i++) {
+//				//one thread for each row calc on A
+//				CalculationThread newThrd1 = new CalculationThread(this, i, partitionType, idCount);
+//				idCount++;
+//				workers.add(newThrd1);					
+//			}
+//			break;
+//		case data_split:
+//			//Uneven row num??????????????????????????
+//			
+//			
+//			//Essentially splitting the matrix into quarters for now (as in the specs)
+//			int size = (matrixSize) / 2; 
+//			for(int i = 0; i < matrixSize; i += size) {
+//				//once a segment of rows form matrix b is calculated, then we continue using
+//				// the ith row in matrix a to calc the next column segment in b
+//				int bSegments = size/2;
+//				while(bSegments != 0) {
+//					for(int j = 0; j < size; j++) {
+//							CalculationThread newThrd1 = 
+//									new CalculationThread(i, i + (size-1), j, j + (size-1), partitionType, idCount);   
+//							idCount++;
+//							workers.add(newThrd1);	
+//						}
+//					bSegments--;
+//				}
+//			}
+//			break;
+//		case none:		
+//			break;
+//		}
 		
 		return workers;
 		
