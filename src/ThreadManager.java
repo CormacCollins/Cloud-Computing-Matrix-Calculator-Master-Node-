@@ -39,11 +39,13 @@ public class ThreadManager extends Thread  {
 	private static SimpleMatrix aMatrix;
 	private static SimpleMatrix bMatrix;	
 	private static double[][] result;
+	private int workerReqSize;
     
-	public ThreadManager(Socket s, int threadid) throws IOException {
+	public ThreadManager(Socket s, int threadid, int workerRequest ) throws IOException {
         socket = s;
         // will close it.
         thrdManagerId = threadid;	        
+        workerReqSize = workerRequest;
         out = new ObjectOutputStream(socket.getOutputStream());
         
         reader = new BufferedReader(
@@ -183,6 +185,9 @@ public class ThreadManager extends Thread  {
 			}
 			break;
 		case data_split:
+			//Uneven row num??????????????????????????
+			
+			
 			//Essentially splitting the matrix into quarters for now (as in the specs)
 			int size = (matrixSize) / 2; 
 			for(int i = 0; i < matrixSize; i += size) {
