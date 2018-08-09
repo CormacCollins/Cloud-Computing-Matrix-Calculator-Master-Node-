@@ -3,11 +3,12 @@ import java.io.Serializable;
 
 public class MatrixResult implements Serializable {
 	int errorcode;
-	int answer[][];
+	double answer[][];
 
-    public MatrixResult(int ans[][], int errCode) {
+    public MatrixResult(double ans[][], int errCode) {
     	answer = ans;
     	errorcode = errCode;
     }
+
 
 }

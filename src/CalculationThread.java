@@ -16,10 +16,10 @@ public class CalculationThread extends Thread  {
 		// Different consturctors for diff calcs - the thread will only operate once 
 		// before it closes so there will be no risk of getting the wrong property
 		
-//		public CalculationThread( partition_type type, int id) {
-//	    	pType = type;
-//	    	thrId = id;
-//		}
+		public CalculationThread( partition_type type, int id) {
+	    	pType = type;
+	    	thrId = id;
+		}
 //		
 //	    public CalculationThread(int aRowStart, int bColStart, partition_type type, int id) {
 //	    	this.aRowStart = aRowStart;
@@ -48,30 +48,31 @@ public class CalculationThread extends Thread  {
 	   public static SimpleMatrix calcMatrix(SimpleMatrix a, SimpleMatrix b) {		   
 		   return a.mult(b);
 	   }
-	    
-	   //----------------------------------------------
-	   //TODO:
-	   //Thinking about planning the shared data etc.
-	   // -------------------------------------------------------------
-	    public void run() {	    	
-	    	double[] jobData = ThreadManager.getJob();
-	    	SimpleMatrix res = calc(jobData[0], jobData[1], jobData[2], jobData[3]);
-	    	ThreadManager.addToResMatrix(res, jobData[0], jobData[3]);
+
+	    public void run() {	
+	    	System.out.println("Thread id " + thrId + " started jobs");
+	    	while(!ThreadManager.jobFinished()) {
+		    	int[] jobData = ThreadManager.getJob();
+		    	SimpleMatrix res = calc(jobData[0], jobData[1], jobData[2], jobData[3]);
+		    	ThreadManager.addToResMatrix(res, jobData[0], jobData[1], jobData[2], jobData[3]);
+	    	}
+
+	    	System.out.println("Thread id " + thrId + " finished");
 	    	
-	    	
+	    	 
 	    }
 
 	    //requires only the mul of | (n by m) * (m by n)|
-		public SimpleMatrix calc(int aRowStart, int aColStart, int bRowStart, int bColstart) {
-			double rows[][] = ThreadManager.getMatrixARows(aRowStart, aColStart);
-			SimpleMatrix aMatrix = new SimpleMatrix(rows);
-			double cols[][] =ThreadManager.getMatrixBColumns(bRowStart, bColstart);
-			SimpleMatrix bMatrix = new SimpleMatrix(rows);
-			SimpleMatrix res = new SimpleMatrix(rows.length, cols.length); //square matrix
-			
-			
+		public SimpleMatrix calc(int aRowStart, int aRowEnd, int bColStart, int bColEnd) {
+			SimpleMatrix aMatrix = ThreadManager.getMatrixARows(aRowStart, aRowEnd);
+			SimpleMatrix bMatrix = ThreadManager.getMatrixBColumns(bColStart, bColEnd);
+			//because square matrices of a and b - the size will be A row by B col
 			//check outputs of matrix first
-			res = aMatrix.mult(bMatrix.transpose());
+			bMatrix = bMatrix.transpose();
+			SimpleMatrix res = new SimpleMatrix(aMatrix.numRows(), bMatrix.numCols()); 
+			
+
+			res = aMatrix.mult(bMatrix).copy();
 			
 			return res;
 		}

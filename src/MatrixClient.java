@@ -57,7 +57,7 @@ public class MatrixClient {
 			out.close();
 			in.close();
 			socket.close();
-		} catch(Exception ex) {
+		} catch(Exception ex) { 
 			System.out.println("Error reading server result object");
 			System.out.println(ex.getStackTrace());
 		}

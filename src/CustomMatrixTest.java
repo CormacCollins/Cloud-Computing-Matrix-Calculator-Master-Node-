@@ -4,9 +4,11 @@ import org.ejml.simple.SimpleMatrix;
 public class CustomMatrixTest {
 			
 	public static void main(String[] args) {
-		double a[][] = {{1,1}, {2,1}};
-		double b[][] = {{1,1}, {2,1}};		
-		SimpleMatrix aM = new SimpleMatrix(a);
+		double a[][] = {{1,1}, 
+				        {2,1}};
+		double b[][] = {{1,1}, 
+				        	{2,1}};		
+		SimpleMatrix aM = new SimpleMatrix(a); 
 		SimpleMatrix bM = new SimpleMatrix(b);
 		CustomMatrixTest.matrixMul(aM, bM, CalculationThread.calcMatrix(aM, bM));			
 		
