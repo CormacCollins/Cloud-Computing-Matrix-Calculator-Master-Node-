@@ -5,13 +5,16 @@ import java.io.InputStreamReader;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
+import java.sql.Date;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.Map;
 import java.util.Queue;
+import java.util.Random;
 import java.util.function.ToIntFunction;
 
 import javax.naming.spi.DirStateFactory.Result;
+import javax.print.attribute.standard.DateTimeAtCompleted;
 
 import org.ejml.equation.Variable;
 import org.ejml.simple.SimpleMatrix;
@@ -61,6 +64,21 @@ public class ThreadManager extends Thread  {
         
         reader = new BufferedReader(
 				new InputStreamReader(socket.getInputStream()));
+		
+	}
+	
+	private SimpleMatrix createRandomSquareMatrix(int n) {
+		double arr[][] = new double[n][n];
+		for(int i = 0; i < n; i++) {
+			for(int j = 0; j < n; j++) {
+				Random random = new Random(n);
+				double a = random.nextDouble();
+				arr[i][j]= a; 
+			}
+		}
+		
+		SimpleMatrix s = new SimpleMatrix(arr);
+		return s;
 		
 	}
 	
@@ -177,8 +195,8 @@ public class ThreadManager extends Thread  {
     			     {2,1}};
     	double ab[][] = {{1,1}, 
     			         {2,1}};
-    	SimpleMatrix m1 = new SimpleMatrix(ab);
-    	SimpleMatrix m2 = new SimpleMatrix(ab);
+    	SimpleMatrix m1 = createRandomSquareMatrix(matrixSize);
+    	SimpleMatrix m2 = createRandomSquareMatrix(matrixSize);
     	aMatrix = m1;
     	bMatrix = m2;    	
     	
@@ -403,7 +421,14 @@ public class ThreadManager extends Thread  {
 		System.out.println("Result should be:..");
 		SimpleMatrix aM = aMatrix;
 		SimpleMatrix bM = bMatrix;
-		aM.mult(bM).print();
+		SimpleMatrix correctAnser = aM.mult(bM);
+		
+		SimpleMatrix actual = new SimpleMatrix(result);
+		boolean b = correctAnser.isIdentical(actual, 1);
+		actual.print();
+		correctAnser.print();
+		System.out.println("Compare of actual answer = " + b);
+		
 		
 		return new MatrixResult(result, errorcode);
 	}
