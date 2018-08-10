@@ -5,18 +5,19 @@ import java.io.InputStreamReader;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
+import java.sql.Date;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.Map;
 import java.util.Queue;
+import java.util.Random;
 import java.util.function.ToIntFunction;
 
 import javax.naming.spi.DirStateFactory.Result;
+import javax.print.attribute.standard.DateTimeAtCompleted;
 
 import org.ejml.equation.Variable;
 import org.ejml.simple.SimpleMatrix;
-import org.junit.experimental.theories.Theories;
-import org.junit.platform.commons.util.PreconditionViolationException;
 
 // ----------------------------------------------- //
 // Responsible for coordination of matrix threads  //
@@ -34,7 +35,7 @@ public class ThreadManager extends Thread  {
     private int thrdManagerId;
     private BufferedReader reader;
     
-    private ArrayList<CalculationThread> workerList = new ArrayList<>();
+    private static ArrayList<CalculationThread> workerList = new ArrayList<>();
     
     //Matrix information
 	public int idCount;
@@ -51,6 +52,7 @@ public class ThreadManager extends Thread  {
 	private static Queue<int[]> jobQueue;
     
 	public ThreadManager(Socket s, int threadid, int workerRequest ) throws IOException {
+		workerList = null;
         socket = s;
         // will close it.
         thrdManagerId = threadid;	        
@@ -64,22 +66,51 @@ public class ThreadManager extends Thread  {
 		
 	}
 	
-	public static synchronized boolean jobFinished() {
+	private SimpleMatrix createRandomSquareMatrix(int n) {
+		 
+		long mills = System.currentTimeMillis() % 1000;
+
+		Random random = new Random(mills);
+		
+		double arr[][] = new double[n][n];
+		for(int i = 0; i < n; i++) {
+			for(int j = 0; j < n; j++) {
+				double a = random.nextDouble();
+				arr[i][j]= a; 
+			}
+		}
+		
+		SimpleMatrix s = new SimpleMatrix(arr);
+		return s;
+		
+	}
+	
+	private static boolean threadsAreFinished() {
+		for (CalculationThread cthd : workerList) {
+			if(cthd.isAlive()) {
+				return false;
+			}
+		}
+		return true;
+	}
+	
+	public static boolean jobFinished() {
 		return jobQueue.isEmpty();
 	}
 	 
 	 public static synchronized int[] getJob() {
-		 if(!jobQueue.isEmpty()) {
+		 if(!jobFinished()) {
 			 int arr[] = jobQueue.peek();
 			 jobQueue.remove();
 			 return arr;
 		 }
 		 
-		 return new int[2]; 
+		 int arr2[] = null;
+		 return arr2;
 	 }
 	
 	//returns matrix of requested segments from 
-	 public static synchronized SimpleMatrix getMatrixARows(int rowAStart, int rowAEnd) {
+	 public static SimpleMatrix getMatrixARows(int rowAStart, int rowAEnd) {
 		 
 		 int size = (rowAEnd+1) - (rowAStart);
 		 double[][] arr = new double[size][size];
@@ -110,7 +141,7 @@ public class ThreadManager extends Thread  {
 
 			
 	 
-	 public static synchronized SimpleMatrix getMatrixBColumns(int startColB, int endColB) {
+	 public static SimpleMatrix getMatrixBColumns(int startColB, int endColB) {
 		 
 		 int size = (endColB+1) - startColB;
 		 double[][] arr = new double[size][size];
@@ -135,7 +166,7 @@ public class ThreadManager extends Thread  {
 	
 	 
 	 ///the arr size:  row = rowEnd - rowStart and the col = colEnd - colStart
-	 public static synchronized void addToResMatrix(SimpleMatrix arr, int rowStart, int rowEnd, 
+	 public static void addToResMatrix(SimpleMatrix arr, int rowStart, int rowEnd, 
 			 int colStart, int colEnd) {
 		 int arrColIndex = 0;
 		 int arrRowIndex = 0;
@@ -170,15 +201,16 @@ public class ThreadManager extends Thread  {
 
 		System.out.println("Queueing jobs");
 		
-		queueJobs();		
+		queueJobs();
+		System.out.println("Jobs to complete = " + jobQueue.size());
     	
 		//Setup static matrices
     	int a[][] = {{1,1}, 
     			     {2,1}};
     	double ab[][] = {{1,1}, 
     			         {2,1}};
-    	SimpleMatrix m1 = new SimpleMatrix(ab);
-    	SimpleMatrix m2 = new SimpleMatrix(ab);
+    	SimpleMatrix m1 = createRandomSquareMatrix(matrixSize);
+    	SimpleMatrix m2 = createRandomSquareMatrix(matrixSize);
     	aMatrix = m1;
     	bMatrix = m2;    	
     	
@@ -211,8 +243,6 @@ public class ThreadManager extends Thread  {
 	/// important to note - this is not shared data as each thread should be 
 	/// operating on different parts of the matrix anyway
 	public void queueJobs(){
-		ArrayList<CalculationThread> workers = new ArrayList<CalculationThread>();
-
 
 		int size = this.matrixSize;
 		// ---------------//
@@ -322,8 +352,8 @@ public class ThreadManager extends Thread  {
 			default: partitionType = partition_type.none;
 					break;				
 		}
-		
-        //set worker count also
+//set worker count also
+		workerList = new ArrayList<CalculationThread>();
         for(int i = 0; i < workerReqSize; i++) {
         	workerList.add(new CalculationThread(partitionType, this.idCount++)); 
         }
@@ -370,9 +400,15 @@ public class ThreadManager extends Thread  {
 //	
 	
 	private void startWorkers(ArrayList<CalculationThread> workers) {
-		for (CalculationThread calculationThread : workers) {
-			calculationThread.run();
-		}		
+		
+		
+			for (CalculationThread calculationThread : workers) {
+				calculationThread.start();
+			}	
+			while(!threadsAreFinished()) {}
+		
+		//wait for the final thread to add it's calculation and die
+		//then workerList will have finished
 	} 
 	
 	private MatrixResult calculate() {
@@ -382,15 +418,20 @@ public class ThreadManager extends Thread  {
 		//the workers will use the approppriately request calculation
 		//workers = getWorkers(jbInfo);
 		startWorkers(workerList);
+		
+
+		System.out.println("Waiting for all threads to finish");
+
 		//join themfor answer
-		try {
-			for (CalculationThread calculationThread : workerList) {
-				calculationThread.join();
-			}
-		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+//		try {
+//			for (CalculationThread calculationThread : workerList) {
+//				calculationThread.join();
+//			}
+//		} catch (InterruptedException e) {
+//			// TODO Auto-generated catch block
+//			e.printStackTrace();
+//		
+//		}
 		
 		System.out.println("Result = ");
 		
@@ -403,10 +444,20 @@ public class ThreadManager extends Thread  {
 		System.out.println("Result should be:..");
 		SimpleMatrix aM = aMatrix;
 		SimpleMatrix bM = bMatrix;
-		aM.mult(bM).print();
+		SimpleMatrix correctAnser = aM.mult(bM);
+		
+		SimpleMatrix actual = new SimpleMatrix(result);
+		boolean b = correctAnser.isIdentical(actual, 1);
+		actual.print();
+		correctAnser.print();
+		System.out.println("Compare of actual answer = " + b);
+		
+		
+		
 		
 		return new MatrixResult(result, errorcode);
 	}
+
 	
 	
 }
