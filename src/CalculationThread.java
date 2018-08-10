@@ -6,10 +6,6 @@ import org.ejml.simple.SimpleMatrix;
 public class CalculationThread extends Thread  {
 
 		private int thrId;
-		private int aRowStart; 
-		private int aRowEnd; 
-		private int bColStart; 
-		private int bColEnd;
 		private partition_type pType;
 		
 		// ----------------------------------------------------------------------------//
@@ -36,10 +32,6 @@ public class CalculationThread extends Thread  {
 	    
 	    public CalculationThread(int aRowStart, int aRowEnd, int bColStart, int bColEnd, 
 	    		partition_type type, int id) {
-	    	this.aRowEnd = aRowEnd;
-	    	this.aRowEnd = aRowEnd;
-	    	this.bColStart = bColStart;
-	    	this.bColEnd = bColEnd;
 	    	pType = type;
 	    	thrId = id;
 	    }
@@ -51,14 +43,30 @@ public class CalculationThread extends Thread  {
 
 	    public void run() {	
 	    	System.out.println("Thread id " + thrId + " started jobs");
-	    	while(!ThreadManager.jobFinished()) {
-		    	int[] jobData = ThreadManager.getJob();
+	    	boolean didWork = false;
+
+
+    		int[] jobData = ThreadManager.getJob();
+	    	while(true) {
+	    		if(jobData == null) {
+	    			break;
+	    		}
+	    		didWork = true;
+	    		System.out.println("Thread id " + thrId + " calculating");
 		    	SimpleMatrix res = calc(jobData[0], jobData[1], jobData[2], jobData[3]);
 		    	ThreadManager.addToResMatrix(res, jobData[0], jobData[1], jobData[2], jobData[3]);
+		    	
+
+	    		jobData = ThreadManager.getJob();
+
 	    	}
 
-	    	System.out.println("Thread id " + thrId + " finished");
 	    	
+//	    	if(!didWork) {
+//	    		System.out.println("Thread id " + thrId + " finished and did not do any work");
+//	    	} else {
+	    		System.out.println("Thread id " + thrId + " finished");
+	    //	}
 	    	 
 	    }
 

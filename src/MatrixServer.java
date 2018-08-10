@@ -44,7 +44,8 @@ public class MatrixServer {
 				MatrixServer matrixServer = new MatrixServer();
 				matrixServer.setSocket(socket);				
 			
-				ThreadManager calculationThread = new ThreadManager(socket, count, 4);
+				int workerCount = 5;
+				ThreadManager calculationThread = new ThreadManager(socket, count, workerCount);
 				calculationThread.start();
 				
 				count++;

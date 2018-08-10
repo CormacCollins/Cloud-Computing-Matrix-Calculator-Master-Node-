@@ -69,18 +69,19 @@ public class MatrixClient {
 		
 		String hostname = "localhost";
 		int port = 1024;
+		int matrixSize = 3	;
 		
-		if (args.length != 2) {
+		if (args.length != 3) {
 			System.out.println("Use the default setting...");
 		} 
 		else {
 			//use cmd line args
 			hostname = args[0];
 			port = Integer.parseInt(args[1]);
+			matrixSize = Integer.parseInt(args[2]);
 		}
 		
 		MatrixClient client = new MatrixClient(hostname, port);
-		int matrixSize = 2; 
 		MatrixResult result = client.calculate("matrix-mul", matrixSize);
 //		System.out.println("Result recieved: error code = " + result.errorcode);		
 		
