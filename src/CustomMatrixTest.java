@@ -20,10 +20,10 @@ public class CustomMatrixTest {
 //		th.start();
 		
 		//setup and run clients
-		int matriSizeStart = 5;
+		int matriSizeStart = 500;
 		int port = 1024;
 		String hostName = "localhost";
-		for(int i = 0; i < 5; i++) {
+		for(int i = 0; i < 1; i++) {
 			String arr[] = new String[3];
 			arr[0] = hostName;
 			arr[1] = Integer.toString(port);
@@ -34,11 +34,5 @@ public class CustomMatrixTest {
 	
 	
 		
-}
-class serverRun implements Runnable
-{
-  public void run(){
-		MatrixServer.main(new String[0]);
- }
 } 
 

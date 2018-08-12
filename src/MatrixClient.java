@@ -32,10 +32,10 @@ public class MatrixClient {
 
 	}
 	
-	private void setMatrixSize(int n) throws IOException {
+	private void setMatrixSize(int n, String command) throws IOException {
 		System.out.println("Requesting size " + n);
 		BufferedWriter writer = new BufferedWriter(out);
-		writer.write("row_column" + ":" + Integer.toString(n));
+		writer.write(command + ":" + Integer.toString(n));
 		writer.newLine();
 		writer.flush();
 	}
@@ -45,7 +45,7 @@ public class MatrixClient {
 	
 	public MatrixResult calculate(String command, int matrixSize) {		
 		try {
-			setMatrixSize(matrixSize);
+			setMatrixSize(matrixSize, command);
 		} catch (IOException e) {
 			System.out.println("Error writing matrixSize to server");
 			e.printStackTrace();
@@ -82,7 +82,7 @@ public class MatrixClient {
 		}
 		
 		MatrixClient client = new MatrixClient(hostname, port);
-		MatrixResult result = client.calculate("matrix-mul", matrixSize);
+		MatrixResult result = client.calculate("data_split", matrixSize);
 //		System.out.println("Result recieved: error code = " + result.errorcode);		
 		
 	}

@@ -9,7 +9,6 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.sql.Date;
 import java.util.ArrayList;
-import java.util.Timer;
 
 
 public class MatrixServer {
@@ -21,14 +20,22 @@ public class MatrixServer {
 		// TODO Auto-generated method stub
 		int port = 1024;
 		int count = 0;
-		if (args.length == 1) {
+		int workerCount = 1;
+		if (args.length == 2) {
 			try {
 				port = Integer.parseInt(args[0]);
+				workerCount = Integer.parseInt(args[1]);
 			}
 			catch(Exception e){
 			}
 		}
+		else {
+			System.out.println("Default port: " + port + " and deafult workerCount " + workerCount);
+		}
+		
+		
 		System.out.println("Matrix server is running on port " + port + "...");
+		System.out.println("Requesting " + workerCount + " workers");
 		// create a server socket and wait for client's connection
 		ServerSocket serverSocket;
 		try {
@@ -43,8 +50,7 @@ public class MatrixServer {
 				//create new server to communicate permanently with client				
 				MatrixServer matrixServer = new MatrixServer();
 				matrixServer.setSocket(socket);				
-			
-				int workerCount = 5;
+
 				ThreadManager calculationThread = new ThreadManager(socket, count, workerCount);
 				calculationThread.start();
 				
