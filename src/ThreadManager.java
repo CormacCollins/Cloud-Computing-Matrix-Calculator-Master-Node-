@@ -17,6 +17,7 @@ import javax.naming.spi.DirStateFactory.Result;
 import javax.print.attribute.standard.DateTimeAtCompleted;
 import javax.swing.text.Segment;
 
+import org.ejml.data.MatrixType;
 import org.ejml.equation.Variable;
 import org.ejml.simple.SimpleMatrix;
 
@@ -29,12 +30,15 @@ enum partition_type {row_column, row_full, data_split, none };
 
 
 public class ThreadManager extends Thread  {
+	
 	//Socket information
     private Socket socket;
+    private int socketId;
     private ObjectInputStream in;
     private ObjectOutputStream out;
     private int thrdManagerId;
     private BufferedReader reader;
+    private int jobId;
     
     private static ArrayList<CalculationThread> workerList = new ArrayList<>();
     
@@ -47,11 +51,22 @@ public class ThreadManager extends Thread  {
 	private static double[][] result;
 	private int workerReqSize;
 	
-
+	//general queue array structure:
+	// [0] = aMatrixRowStart
+	// [1] = aMatrixRowEnd
+	// [2] = bMatrixColStart
+	// [3] = bMatrixEnd	
 	private static Queue<int[]> jobQueue;
+	
     
+	
+	private boolean isDEBUGGING = false;
+	
+	
 	public ThreadManager(Socket s, int threadid, int workerRequest ) throws IOException {
+		//must reset, or threading goes nuts
 		workerList = null;
+		jobId = threadid;
         socket = s;
         // will close it.
         thrdManagerId = threadid;	        
@@ -83,16 +98,8 @@ public class ThreadManager extends Thread  {
 		
 	}
 	
-	private static boolean threadsAreFinished() {
-		for (CalculationThread cthd : workerList) {
-			if(cthd.isAlive()) {
-				return false;
-			}
-		}
-		return true;
-	}
-	
-	public static boolean jobFinished() {
+
+	public static synchronized boolean jobFinished() {
 		return jobQueue.isEmpty();
 	}
 	 
@@ -108,7 +115,7 @@ public class ThreadManager extends Thread  {
 	 }
 	
 	//returns matrix of requested segments from 
-	 public static SimpleMatrix getMatrixARows(int rowAStart, int rowAEnd) {
+	 public static  SimpleMatrix getMatrixARows(int rowAStart, int rowAEnd) {
 		 
 		 int size = (rowAEnd+1) - (rowAStart);
 		 double [][]arr = new double[size][size];
@@ -208,49 +215,74 @@ public class ThreadManager extends Thread  {
 	
 	public void run() {	
 		String line = "";
+		Status errorCode = Status.network_error;
+		MatrixResult serverResult = null;
 		try {
 			line = reader.readLine();
 		} catch (IOException e1) {
-			// TODO Auto-generated catch block
-			e1.printStackTrace();
+			errorCode = Status.client_request_read_error;
+			
+			if(isDEBUGGING)
+				e1.printStackTrace();
+			
 		}
-		System.out.println("Size recieved " + line);
 
-		//Get info from client string
-		parseRequest(line);
+		//did not read request correctly
+		if(errorCode != Status.client_request_read_error) {
+			//Get info from client string
+			parseRequest(line);
+			
+			//if inproper request sent - we return an error
+			if(this.partitionType == partition_type.none) {
+				errorCode = Status.invalid_paramaters;
+			}
+			else {
+				idCount = thrdManagerId; //Thread manager is the first thread id   -- also because thrdManager could be 1 of many clients
+				idCount++;
+				
+				//Setup the result matrix that all threads will be accessing
+				result = new double[matrixSize][matrixSize];
 		
-		idCount = thrdManagerId; //Thread manager is the first thread id   -- also because thrdManager could be 1 of many clients
-		idCount++;
+				//System.out.println("Queueing jobs");
+				
+				queueJobs();
+				if(isDEBUGGING) {
+					System.out.println("Matrix size request = " + matrixSize);
+					System.out.println("Jobs to complete = " + jobQueue.size());
+				}
+				
+				//Setup static matrices
+		    	int a[][] = {{1,1}, 
+		    			     {2,1}};
+		    	double ab[][] = {{1,1}, 
+		    			         {2,1}};
+		    	double arr1[][] = createRandomSquareMatrix(matrixSize);
+		    	double arr2[][] = createRandomSquareMatrix(matrixSize);
+		    	
+		    	SimpleMatrix m1 = new SimpleMatrix(arr1);
+		    	SimpleMatrix m2 = new SimpleMatrix(arr2);
+		    	
+		    	if(isDEBUGGING) {
+			    	System.out.println("To be calculated:");
+			    	m1.print();
+			    	m2.print();
+		    	}
+		    	
+		    	aMatrix = arr1;
+		    	bMatrix = arr2;   	
+		    	
+		    	//returns matrix result with error code attached
+		    	serverResult = calculate();
+			}
+		}
 		
-		//Setup the result matrix that all threads will be accessing
-		result = new double[matrixSize][matrixSize];
-
-		System.out.println("Queueing jobs");
-		
-		queueJobs();
-		System.out.println("Jobs to complete = " + jobQueue.size());
-    	
-		//Setup static matrices
-    	int a[][] = {{1,1}, 
-    			     {2,1}};
-    	double ab[][] = {{1,1}, 
-    			         {2,1}};
-    	double arr1[][] = createRandomSquareMatrix(matrixSize);
-    	double arr2[][] = createRandomSquareMatrix(matrixSize);
-    	System.out.println("To be calculated:");
-    	
-    	SimpleMatrix m1 = new SimpleMatrix(arr1);
-    	SimpleMatrix m2 = new SimpleMatrix(arr2);
-    	
-    	m1.print();
-    	m2.print();
-    	aMatrix = arr1;
-    	bMatrix = arr2;   	
-    	
-    	//returns matrix result with error code attached
-    	MatrixResult obj = calculate();
+		//if we didn't get a calculate call we send an error call 
+		if(serverResult == null) {
+			serverResult = new MatrixResult(null, errorCode);
+		}
+	    	
     	try {
-			out.writeObject(obj);
+			out.writeObject(serverResult);
 
 	    	out.flush();
 
@@ -264,9 +296,11 @@ public class ThreadManager extends Thread  {
     	try {
 			// closing the reader also closes input stream?
 			reader.close();
+			socket.close();
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
-			e.printStackTrace();
+			if(isDEBUGGING)
+				e.printStackTrace();
 		}
 		
 	}
@@ -277,7 +311,7 @@ public class ThreadManager extends Thread  {
 	/// operating on different parts of the matrix anyway
 	public void queueJobs(){
 
-		int size = this.matrixSize;
+		int size = matrixSize;
 		// ---------------//
 		// ---- arr ------//
 		// ---------------//
@@ -410,76 +444,11 @@ public class ThreadManager extends Thread  {
 					//this should break the loop
 					rowCount+=remainderSegment;
 				}
-				
-				
-				
-//
-//				boolean isRem = false;
-//				//cy
-//				for(int i = 0; i < size-1; ) {
-//					
-//					if((i + remainderSegment == (size-1)) && isUneven) {
-//						isRem = true;
-//					}
-//					
-//					if(!isRem) {
-//						for(int j = 0; j <  size-1; j++) {
-//							arr = new int[4]; 
-//							arr[0] = i;
-//							arr[1] = i + (dataSplitSizeColCount-1);
-//							
-//							arr[2] = j;
-//							arr[3] = j + (dataSplitSizeColCount-1);
-//
-//							jobQueue.add(arr);
-//						
-//						}
-//
-//						i += dataSplitSizeColCount-1;
-//					}
-//					else {
-//						arr = new int[4]; 
-//						arr[0] = i;
-//						arr[1] = i + (remainderSegment-1);
-//						arr[2] = i;
-//						arr[3] = i + (remainderSegment-1);
-//						jobQueue.add(arr);
-//						i += remainderSegment-1;
-//						isRem = false;
-//					}
-//				}
-				
-				break;				
-			case none:		
+				break;
+			default:
 				break;
 			}
-//				//loop increments in the ize of the datasplit
-//				for(int i = 0; i < (size*size); i += (dataSplitSizeColCount)) {
-//					
-//					arr = new int[4]; 
-//					
-//					//it's the remainder row or it would not make it hear if remainder is 0
-//					if((i + remainderSegment) == size) {
-//						//we add a smaller portion to do
-//						arr[0] = i;
-//						arr[1] = i + (remainderSegment-1);
-//						arr[2] = i;
-//						arr[3] = i + (remainderSegment-1);
-//					}
-//					
-//					//allocate segment of calc (matrixA and matriB info)
-//					arr[0] = i;
-//					arr[1] = i + (dataSplitSizeColCount-1);
-//					arr[2] = i;
-//					arr[3] = i + (dataSplitSizeColCount-1);
-//
-//					jobQueue.add(arr);
-//				}
-//				break;
-//			case none:		
-//				break;
-//			}
-		
+				
 			int sized = jobQueue.size();
 //			for(int i = 0; i < sized; i++) {
 //				int array[] = jobQueue.peek();
@@ -496,8 +465,12 @@ public class ThreadManager extends Thread  {
 	public void parseRequest(String clientReq) {
 		String arr[] = clientReq.split(":");
 		if(arr.length != 2) {
-			System.out.println("Incorrect parameters: needs 'calculationYype'-'matrixSize' ");
+			if(isDEBUGGING) {
+				System.out.println("Incorrect parameters: needs 'calculationYype'-'matrixSize' ");
+			}
+			
 			partitionType = partition_type.none;	
+			return;
 		}
 
 		
@@ -513,112 +486,92 @@ public class ThreadManager extends Thread  {
 			default: partitionType = partition_type.none;
 					break;				
 		}
-//set worker count also
-		workerList = new ArrayList<CalculationThread>();
-        for(int i = 0; i < workerReqSize; i++) {
-        	workerList.add(new CalculationThread(this.idCount++, partitionType)); 
-        }
 		
 		matrixSize = Integer.parseInt(arr[1]);
+		
+
+			
 	}
 	
-	//Based on current set requirements we will select how many worker threads we want to create
-//	private void calcWorkerNumber(JobInfo jbInfo) {
-//		int workerCount = 0;
-//		switch (jbInfo.partitionType) {
-//		case row_column:
-//				workerCount = jbInfo.matrixSize * jbInfo.matrixSize; //n * n calcs (1 worker for each) 			
-//			break;
-//		case row_full:
-//			workerCount = jbInfo.matrixSize; //1 worker per matrix row to complete
-//				break;
-//		case data_split:
-//			workerCount = (jbInfo.matrixSize * jbInfo.matrixSize) / 4; 
-//			//For now the partition will be in quarters - an n * n will always be an even number too!
-//			break;
-//		case none:
-//			workerCount = 0;			
-//			break;
-//		}
-//		
-//		jbInfo.idCount = workerCount;	
-//		
-//	}
-	
-	//Create list of threads that have been given the job info, this will influence the calculation method they call when they are run()
-//	private ArrayList<CalculationThread> getWorkers(JobInfo jbInfo){
+	private void startWorkers() {
 		
-//		int arr[]
-//		
-//		ArrayList<CalculationThread> workers = new ArrayList<CalculationThread>();
-//		for(int i = 0; i < jbInfo.workerCount; i++) {
-//			CalculationThread thread = new CalculationThread(jbInfo, this);
-//			workers.add(thread);
-//		}
+		ArrayList<CalculationThread> workerList = new ArrayList<CalculationThread>();
+		//only making workers for larger matrix
+		if(matrixSize > 10) {
+			//set worker count also
+	        for(int i = 0; i < workerReqSize; i++) {
+	        	CalculationThread thread = new CalculationThread(this.idCount++, partitionType, jobId);
+	        	workerList.add(thread);
+	        	thread.start();
+	        }
+		}
+		else {
+			
+			if(isDEBUGGING) {
+				System.out.println("Matrix request is small - using only 1 worker");			
+				}
+			CalculationThread thread = new CalculationThread(this.idCount++, partitionType, jobId);
+			thread.start();
+		}
 		
-//		return new ArrayList<CalculationThread>();
-//	}
-//	
-	
-	private void startWorkers(ArrayList<CalculationThread> workers) {
+		for(CalculationThread thread : workerList) {
+			try {
+				thread.join();
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+        }
 		
-		
-			for (CalculationThread calculationThread : workers) {
-				calculationThread.start();
-			}	
-			while(!threadsAreFinished()) {}
-		
-		//wait for the final thread to add it's calculation and die
-		//then workerList will have finished
+		workerList = null;
+			
+
 	} 
 	
 	private MatrixResult calculate() {
-		int errorcode = 0;
-		
-		//int answer[][] = {{1,2}, {1,2}};
-		//the workers will use the approppriately request calculation
-		//workers = getWorkers(jbInfo);
-		startWorkers(workerList);
-		
+		Status errorcode = Status.successful_calculation;
 
-		System.out.println("Waiting for all threads to finish");
+		try {
+			startWorkers();
+		}
+		catch (Exception e) {
+			//calculation error
+			errorcode = Status.calc_error;
+			if(isDEBUGGING) {
+				e.printStackTrace();
+			}
+		}
+		if(isDEBUGGING) {
+			SimpleMatrix aM = new SimpleMatrix(aMatrix);
+			SimpleMatrix bM = new SimpleMatrix(bMatrix);
+			SimpleMatrix correctAnser = aM.mult(bM);
+			
+			SimpleMatrix actual = new SimpleMatrix(result);
+			boolean b = correctAnser.isIdentical(actual, 1);
 
-		//join themfor answer
-//		try {
-//			for (CalculationThread calculationThread : workerList) {
-//				calculationThread.join();
-//			}
-//		} catch (InterruptedException e) {
-//			// TODO Auto-generated catch block
-//			e.printStackTrace();
-//		
-//		}
+			System.out.println("Result = ");
+			actual.print();
+			correctAnser.print();
+			System.out.println("Compare of actual answer = " + b);
+		}
 		
-		System.out.println("Result = ");
-		
-//		for(int i = 0; i < this.result.length; i++) {
-//			for(int j = 0; j < this.result.length; j++) {
-//			System.out.println(result[i][j] + ",");
-//			}
-//		}
-		
-		//System.out.println("Result should be:..");
 		SimpleMatrix aM = new SimpleMatrix(aMatrix);
 		SimpleMatrix bM = new SimpleMatrix(bMatrix);
 		SimpleMatrix correctAnser = aM.mult(bM);
 		
 		SimpleMatrix actual = new SimpleMatrix(result);
 		boolean b = correctAnser.isIdentical(actual, 1);
-		actual.print();
-		correctAnser.print();
-		System.out.println("Compare of actual answer = " + b);
-	
+
+		if(!b) {
+			
+			System.out.println("Result failed");
+//			actual.print();
+//			correctAnser.print();
+//			
+		}
 		
 		return new MatrixResult(result, errorcode);
 	}
-
-	
-	
 }
 
 

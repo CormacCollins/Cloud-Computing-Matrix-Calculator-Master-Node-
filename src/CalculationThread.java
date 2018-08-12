@@ -7,10 +7,12 @@ public class CalculationThread extends Thread  {
 
 		private int thrId;
 		private partition_type pType;
+		private int jobID;
 		
-		public CalculationThread(int id, partition_type pt) {
+		public CalculationThread(int id, partition_type pt, int jobId) {
 	    	thrId = id;
 	    	pType = pt;
+	    	jobID = jobId;
 		}
 	   
 	    
@@ -19,7 +21,8 @@ public class CalculationThread extends Thread  {
 	   }
 
 	    public void run() {	
-	    	System.out.println("Thread id " + thrId + " started jobs");
+	    	
+	    	//System.out.println("Thread id " + thrId + " started jobs");
 	    	int jobsCompleted = 0;
 
 
@@ -28,7 +31,7 @@ public class CalculationThread extends Thread  {
 	    		if(jobData == null) {
 	    			break;
 	    		}
-	    		System.out.println("Thread id " + thrId + " calculating");
+	    		//System.out.println("Thread id " + thrId + " calculating on job id " + jobID);
 		    	SimpleMatrix res = calc(jobData[0], jobData[1], jobData[2], jobData[3]);
 		    	ThreadManager.addToResMatrix(res, jobData[0], jobData[1], jobData[2], jobData[3]);
 		    	jobsCompleted++;
@@ -37,12 +40,9 @@ public class CalculationThread extends Thread  {
 
 	    	}
 
-	    	
-//	    	if(!didWork) {
-//	    		System.out.println("Thread id " + thrId + " finished and did not do any work");
-//	    	} else {
-	    		System.out.println("Thread id " + thrId + " finished " + jobsCompleted + " jobs");
-	    //	}
+
+	    		//System.out.println("Thread id " + thrId + " finished " + jobsCompleted + " jobs on jobID " + jobID);
+
 	    	 
 	    }
 

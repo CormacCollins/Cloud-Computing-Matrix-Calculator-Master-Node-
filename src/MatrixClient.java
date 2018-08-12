@@ -15,9 +15,12 @@ public class MatrixClient {
 	//recieving more complex serializable object
 	private ObjectInputStream in = null;
 			
+	
 	//setup client with requested port
 	//TODO: respond to each exception
 	public MatrixClient(String hostname, int port) {
+
+		
 		
 		try {
 			// create a socket
@@ -79,10 +82,60 @@ public class MatrixClient {
 			hostname = args[0];
 			port = Integer.parseInt(args[1]);
 			matrixSize = Integer.parseInt(args[2]);
+
+//			String s = args[3];
+//			System.out.println("Process " + s);
+			
 		}
 		
+
+		String rowCol = "row_column";
+		String rowFull = "row_full";
+		String dataSp = "data_split";
+		
+		
 		MatrixClient client = new MatrixClient(hostname, port);
-		MatrixResult result = client.calculate("data_split", matrixSize);
+		long startTime = System.nanoTime();
+		MatrixResult result = client.calculate(dataSp, matrixSize);
+		long endTime = System.nanoTime();
+
+		long duration = (endTime - startTime) / 1000000;  //divide by 1000000 to get milliseconds.
+		System.out.println("Time till conneciton return " + duration);
+
+		
+//		try {
+//			Thread.sleep(1000000);
+//		} catch (InterruptedException e) {
+//			// TODO Auto-generated catch block
+//			e.printStackTrace();
+//		}
+//		
+		switch (result.stat) {
+			case successful_calculation:
+				System.out.println("Result successful:");
+//				for(int i = 0; i < matrixSize; i++) {
+//					for(int j = 0; j < matrixSize; j++) {
+//						System.out.print(result.answer[i][j] + ", ");
+//					}
+//					System.out.println();
+//				}
+				break;
+			case network_error:
+				System.out.println("Connecection error - please check connection");
+				break;
+			case invalid_paramaters:
+				System.out.println("Invalid params needs format 'calculationType'-'matrixSize'");
+				break;
+			case calc_error:
+				System.out.println("Sorry there was an erorr with the calculation");
+				break;
+			case client_request_read_error:
+				System.out.println("Server could not read socket input from client");
+				break;
+			default:
+			break;
+		}
+		
 //		System.out.println("Result recieved: error code = " + result.errorcode);		
 		
 	}

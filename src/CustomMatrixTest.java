@@ -1,14 +1,5 @@
-
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
-
-import org.ejml.data.DenseD2Matrix64F;
-import org.ejml.simple.SimpleMatrix;
-import org.ejml.sparse.triplet.MatrixFeatures_DSTL;
-import org.omg.CORBA.PUBLIC_MEMBER;
+import java.util.Scanner;
 
 public class CustomMatrixTest {
 			
@@ -20,7 +11,7 @@ public class CustomMatrixTest {
 //		th.start();
 		
 		//setup and run clients
-		int matriSizeStart = 500;
+		int matriSizeStart = 20;
 		int port = 1024;
 		String hostName = "localhost";
 		for(int i = 0; i < 1; i++) {

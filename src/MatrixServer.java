@@ -19,32 +19,34 @@ public class MatrixServer {
 	public static void main(String[] args) {
 		// TODO Auto-generated method stub
 		int port = 1024;
+		int socketPort = 1000;
 		int count = 0;
 		int workerCount = 1;
+		int []socketList = new int[10000];
+		int socketIndex = 0;
 		if (args.length == 2) {
 			try {
-				port = Integer.parseInt(args[0]);
+				socketPort = Integer.parseInt(args[0]);
 				workerCount = Integer.parseInt(args[1]);
 			}
 			catch(Exception e){
 			}
 		}
 		else {
-			System.out.println("Default port: " + port + " and deafult workerCount " + workerCount);
+			//System.out.println("Default port: " + port + " and deafult workerCount " + workerCount);
 		}
 		
 		
-		System.out.println("Matrix server is running on port " + port + "...");
-		System.out.println("Requesting " + workerCount + " workers");
+		//System.out.println("Matrix server is running on port " + port + "...");
+		//System.out.println("Requesting " + workerCount + " workers");
 		// create a server socket and wait for client's connection
 		ServerSocket serverSocket;
 		try {
 			serverSocket = new ServerSocket(port);
-	        System.out.println("Server Started");
 			while(true) {
-
+				
 				Socket socket = serverSocket.accept();
-				System.out.println("Socket number " + count + " open.");
+				//System.out.println("Socket number " + count + " open.");
 				
 						
 				//create new server to communicate permanently with client				
@@ -52,8 +54,7 @@ public class MatrixServer {
 				matrixServer.setSocket(socket);				
 
 				ThreadManager calculationThread = new ThreadManager(socket, count, workerCount);
-				calculationThread.start();
-				
+				calculationThread.start();			
 				count++;
 
 			}

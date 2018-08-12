@@ -1,13 +1,16 @@
 import java.io.Serializable;
 
+//Errorcodes: 1 - network_error 2 - invalid_paramaters 3- calc error
+// 4 - param read error form client
 
 public class MatrixResult implements Serializable {
-	int errorcode;
-	double answer[][];
 
-    public MatrixResult(double ans[][], int errCode) {
+	public Status stat;
+	double[][] answer;
+
+    public MatrixResult(double[][] ans, Status st) {
     	answer = ans;
-    	errorcode = errCode;
+    	stat = st;
     }
 
 
