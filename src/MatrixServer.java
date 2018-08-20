@@ -37,7 +37,7 @@ public class MatrixServer {
 		}
 		
 		
-		//System.out.println("Matrix server is running on port " + port + "...");
+		System.out.println("Matrix server is running on port " + port + "...");
 		//System.out.println("Requesting " + workerCount + " workers");
 		// create a server socket and wait for client's connection
 		ServerSocket serverSocket;

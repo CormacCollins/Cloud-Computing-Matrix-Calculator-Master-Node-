@@ -569,6 +569,13 @@ public class ThreadManager extends Thread  {
 //			correctAnser.print();
 //			
 		}
+		else {
+
+			System.out.println("Successfully calculated");
+			System.out.println("Matrix of size: " + matrixSize);
+			System.out.println("Using " + workerReqSize + " workers.");
+			System.out.println("Using the " + this.partitionType.toString() + " method");
+		}
 		
 		return new MatrixResult(result, errorcode);
 	}

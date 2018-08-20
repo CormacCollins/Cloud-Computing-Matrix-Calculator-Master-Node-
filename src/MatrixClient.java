@@ -112,7 +112,7 @@ public class MatrixClient {
 //		
 		switch (result.stat) {
 			case successful_calculation:
-				System.out.println("Result successful:");
+				System.out.println("Result successful");
 //				for(int i = 0; i < matrixSize; i++) {
 //					for(int j = 0; j < matrixSize; j++) {
 //						System.out.print(result.answer[i][j] + ", ");
@@ -124,7 +124,7 @@ public class MatrixClient {
 				System.out.println("Connecection error - please check connection");
 				break;
 			case invalid_paramaters:
-				System.out.println("Invalid params needs format 'calculationType'-'matrixSize'");
+				System.out.println("Invalid params needs format '	");
 				break;
 			case calc_error:
 				System.out.println("Sorry there was an erorr with the calculation");

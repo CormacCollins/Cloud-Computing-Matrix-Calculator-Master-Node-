@@ -1,4 +1,5 @@
 
+
 public enum Status {
 	successful_calculation,
 	network_error,
