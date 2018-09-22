@@ -565,8 +565,8 @@ public class ThreadManager extends Thread  {
 		if(!b) {
 			
 			System.out.println("Result failed");
-//			actual.print();
-//			correctAnser.print();
+			actual.print();
+			correctAnser.print();
 //			
 		}
 		else {
@@ -575,6 +575,8 @@ public class ThreadManager extends Thread  {
 			System.out.println("Matrix of size: " + matrixSize);
 			System.out.println("Using " + workerReqSize + " workers.");
 			System.out.println("Using the " + this.partitionType.toString() + " method");
+			actual.print();
+			correctAnser.print();
 		}
 		
 		return new MatrixResult(result, errorcode);

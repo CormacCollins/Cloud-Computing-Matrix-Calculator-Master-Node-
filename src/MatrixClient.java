@@ -72,7 +72,7 @@ public class MatrixClient {
 		
 		String hostname = "localhost";
 		int port = 1024;
-		int matrixSize = 3	;
+		int matrixSize = 100	;
 		
 		if (args.length != 3) {
 			System.out.println("Use the default setting...");
@@ -96,7 +96,7 @@ public class MatrixClient {
 		
 		MatrixClient client = new MatrixClient(hostname, port);
 		long startTime = System.nanoTime();
-		MatrixResult result = client.calculate(dataSp, matrixSize);
+		MatrixResult result = client.calculate(rowCol, matrixSize);
 		long endTime = System.nanoTime();
 
 		long duration = (endTime - startTime) / 1000000;  //divide by 1000000 to get milliseconds.
