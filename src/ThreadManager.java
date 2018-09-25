@@ -1,3 +1,4 @@
+import java.awt.List;
 import java.awt.font.NumericShaper.Range;
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -5,12 +6,18 @@ import java.io.InputStreamReader;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
+import java.security.KeyStore.Entry;
 import java.sql.Date;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Map;
 import java.util.Queue;
 import java.util.Random;
+import java.util.Stack;
 import java.util.function.ToIntFunction;
 
 import javax.naming.spi.DirStateFactory.Result;
@@ -26,7 +33,7 @@ import org.ejml.simple.SimpleMatrix;
 // ------------------------------------------------//
 
 
-enum partition_type {row_column, row_full, data_split, none };
+enum partition_type {row_column, row_full, none }; //no more data_split - removed for cloud computing version
 
 
 public class ThreadManager extends Thread  {
@@ -46,9 +53,10 @@ public class ThreadManager extends Thread  {
 	public int idCount;
 	private static int matrixSize;
 	private partition_type partitionType;
-	private static double[][] aMatrix;
-	private static double[][] bMatrix;	
-	private static double[][] result;
+	private String operationType;
+	private static Double[][] aMatrix;
+	private static Double[][] bMatrix;	
+	private static Double[][] result;
 	private int workerReqSize;
 	
 	//general queue array structure:
@@ -56,14 +64,30 @@ public class ThreadManager extends Thread  {
 	// [1] = aMatrixRowEnd
 	// [2] = bMatrixColStart
 	// [3] = bMatrixEnd	
-	private static Queue<int[]> jobQueue;
+	private Queue<int[]> jobQueue;
 	
+	//added data structure for cloud comp version
+	Map<Integer, Double[][]> aCols;
+	Map<Integer, Double[][]> bRows;
+	
+	Job currentJob;
+	
+	//id for each worker and his jobId's
+	int uniqueIDIncrementorForWOrkers = 0;
+	Map<Integer, Integer[]> WorkerJobMap = new HashMap<Integer, Integer[]>();
+	
+	//Worker ID's and their loadCapacity
+	Map<Integer, Integer> workerIDs = new HashMap<Integer, Integer> ();
+	int PEAK_LOAD = 100;
     
 	
 	private boolean isDEBUGGING = false;
 	
 	
 	public ThreadManager(Socket s, int threadid, int workerRequest ) throws IOException {
+		
+		operationType = "multiplication";
+		
 		//must reset, or threading goes nuts
 		workerList = null;
 		jobId = threadid;
@@ -77,19 +101,21 @@ public class ThreadManager extends Thread  {
         
         reader = new BufferedReader(
 				new InputStreamReader(socket.getInputStream()));
+        
+        
 		
 	}
 	
-	private double[][] createRandomSquareMatrix(int n) {
+	private Double[][] createRandomSquareMatrix(int n) {
 		 //
 		//long mills = (System.currentTimeMillis() / 10000);
 
 		Random random = new Random(n);
 		
-		double arr[][] = new double[n][n];
+		Double arr[][] = new Double[n][n];
 		for(int i = 0; i < n; i++) {
 			for(int j = 0; j < n; j++) {
-				double a = (double)random.nextInt(100);
+				Double a = (Double)random.nextInt(100);
 				arr[i][j]= a; 
 			}
 		}
@@ -99,11 +125,11 @@ public class ThreadManager extends Thread  {
 	}
 	
 
-	public static synchronized boolean jobFinished() {
+	public boolean jobFinished() {
 		return jobQueue.isEmpty();
 	}
 	 
-	 public static synchronized int[] getJob() {
+	 public int[] getJob() {
 		 if(!jobFinished()) {
 			 int arr[] = jobQueue.peek();
 			 jobQueue.remove();
@@ -115,11 +141,11 @@ public class ThreadManager extends Thread  {
 	 }
 	
 	//returns matrix of requested segments from 
-	 public static  SimpleMatrix getMatrixARows(int rowAStart, int rowAEnd) {
+	 public Double[][] getMatrixARows(int rowAStart, int rowAEnd) {
 		 
 		 int size = (rowAEnd+1) - (rowAStart);
-		 double [][]arr = new double[size][size];
-		 double []arr2 = new double[matrixSize];
+		 Double [][]arr = new Double[size][size];
+		 Double []arr2 = new Double[matrixSize];
 		 int counti = 0;
 		 
 		 // We can guarantee we will get the correct rows to calc 
@@ -134,20 +160,19 @@ public class ThreadManager extends Thread  {
 			 //add column to 2Darray
 			 arr[counti++] = arr2; 
 
-			 arr2 =  new double[matrixSize];
+			 arr2 =  new Double[matrixSize];
 		 }
 		 
-		 SimpleMatrix result = new SimpleMatrix(arr);
-		 return result;
+		 return arr;
 	 }
 
 			
 	 
-	 public static SimpleMatrix getMatrixBColumns(int startColB, int endColB) {
+	 public Double[][] getMatrixBColumns(int startColB, int endColB) {
 		 
 		 int size = (endColB+1) - startColB;
-		 double[][] arr = new double[size][size];
-		 double []arr2 = new double[matrixSize];
+		 Double[][] arr = new Double[size][size];
+		 Double []arr2 = new Double[matrixSize];
 		 int countj = 0;
 		 
 		 // We can guarantee we will get the correct rows to calc 
@@ -161,35 +186,38 @@ public class ThreadManager extends Thread  {
 			 //add column to 2Darray
 			 arr[countj++] = arr2; 
 
-			 arr2 = new double[matrixSize];
+			 arr2 = new Double[matrixSize];
 		 }
 		 
-		 SimpleMatrix result = new SimpleMatrix(arr);
-		 return result;
+		 return arr;
 	 }
 	 
-	 public static SimpleMatrix getMatrixBColumnsDataSplit(int startColB, int endColB) {
-		 
-		 int size = (endColB+1) - startColB;
-		 double[][] arr = new double[size][size];
-		 double []arr2 = new double[matrixSize];
-		 int countj = 0;
-		 
-		 // We can guarantee we will get the correct rows to calc 
-		 // as the thread manager has split the jobs up already
-		 for(int i = startColB; i < (startColB+size); i++) {
-
-			 //get column from i row
-			 for(int j = 0; j < (matrixSize) ; j++) {
-				//arr2[j]= bMatrix.get(j, i);  
-			 }
-			 //add column to 2Darray
-			 arr[countj++] = arr2; 
-		 }
-		 
-		 SimpleMatrix result = new SimpleMatrix(arr);
-		 return result;
-	 }
+	 // ----------------------------------------
+	 //won't be used in cloud computing version
+	 // -----------------------------------------
+	 
+	//	 public static SimpleMatrix getMatrixBColumnsDataSplit(int startColB, int endColB) {
+	//		 
+	//		 int size = (endColB+1) - startColB;
+	//		 Double[][] arr = new Double[size][size];
+	//		 Double []arr2 = new Double[matrixSize];
+	//		 int countj = 0;
+	//		 
+	//		 // We can guarantee we will get the correct rows to calc 
+	//		 // as the thread manager has split the jobs up already
+	//		 for(int i = startColB; i < (startColB+size); i++) {
+	//
+	//			 //get column from i row
+	//			 for(int j = 0; j < (matrixSize) ; j++) {
+	//				//arr2[j]= bMatrix.get(j, i);  
+	//			 }
+	//			 //add column to 2Darray
+	//			 arr[countj++] = arr2; 
+	//		 }
+	//		 
+	//		 SimpleMatrix result = new SimpleMatrix(arr);
+	//		 return result;
+	//	 }
 	 
 	 public static SimpleMatrix getFullBMatrix() {
 		 SimpleMatrix sMatrix = new SimpleMatrix(bMatrix);
@@ -227,12 +255,13 @@ public class ThreadManager extends Thread  {
 			
 		}
 
-		//did not read request correctly
+		//if we read request correctly
 		if(errorCode != Status.client_request_read_error) {
 			//Get info from client string
 			parseRequest(line);
 			
-			//if inproper request sent - we return an error
+			//if improper request sent - we return an error
+			//it will be set to none in the parsing process before this if the request type is invalid
 			if(this.partitionType == partition_type.none) {
 				errorCode = Status.invalid_paramaters;
 			}
@@ -241,7 +270,7 @@ public class ThreadManager extends Thread  {
 				idCount++;
 				
 				//Setup the result matrix that all threads will be accessing
-				result = new double[matrixSize][matrixSize];
+				result = new Double[matrixSize][matrixSize];
 		
 				//System.out.println("Queueing jobs");
 				
@@ -252,12 +281,8 @@ public class ThreadManager extends Thread  {
 				}
 				
 				//Setup static matrices
-		    	int a[][] = {{1,1}, 
-		    			     {2,1}};
-		    	double ab[][] = {{1,1}, 
-		    			         {2,1}};
-		    	double arr1[][] = createRandomSquareMatrix(matrixSize);
-		    	double arr2[][] = createRandomSquareMatrix(matrixSize);
+		    	Double arr1[][] = createRandomSquareMatrix(matrixSize);
+		    	Double arr2[][] = createRandomSquareMatrix(matrixSize);
 		    	
 		    	SimpleMatrix m1 = new SimpleMatrix(arr1);
 		    	SimpleMatrix m2 = new SimpleMatrix(arr2);
@@ -352,113 +377,137 @@ public class ThreadManager extends Thread  {
 					jobQueue.add(arr);
 				}
 				break;
-			case data_split:
-				//Data split one
-
-				int dataSplitSizeColCount;
-				int remainderSegment;
-				
-				//this will also stop dataSplitSize being zero
-				if(workerReqSize > matrixSize) {
-					System.out.println("Worker size greater than matrix - fixing partition length");
-					//firstly we will only use workers with N >= 10
-					//there will be too little work so we just make small enough segments
-					//i.e. likely 2*2 to split between some workers
-					dataSplitSizeColCount = 2;
-					
-					//remainder segment stays the same
-				}
-				else {					
-					dataSplitSizeColCount = (int)size/count;
-				}
-
-				
-				remainderSegment = size % dataSplitSizeColCount;
-				boolean isUneven = false;
-				if(remainderSegment != 0) {
-					isUneven = true;
-				}
-				
-				
-				
-				int rowCount = 0;
-				
-				//add row splits
-				while(rowCount < ((size) - remainderSegment)) {
-					for(int j = 0; j <  size; j+=dataSplitSizeColCount) {
-						
-						//potentiual remainder sliver in col
-						if(( (size) - j== remainderSegment) && remainderSegment != 0) {
-							arr = new int[4]; 
-							arr[0] = rowCount;
-							arr[1] = rowCount + (dataSplitSizeColCount-1);
-							
-							arr[2] = j;
-							arr[3] = j + (remainderSegment-1);
-
-							jobQueue.add(arr);	
-							break;
-						}
-						
-						arr = new int[4]; 
-						arr[0] = rowCount;
-						arr[1] = rowCount + (dataSplitSizeColCount-1);
-						
-						arr[2] = j;
-						arr[3] = j + (dataSplitSizeColCount-1);
-
-						jobQueue.add(arr);	
-
-						
-					}					
-					rowCount += dataSplitSizeColCount;
-				}
-				
-				//may have a row left to allocate
-				while(rowCount <= (size) && remainderSegment != 0) {
-					for(int j = 0; j <  size; j+=dataSplitSizeColCount) {
-
-						//potentiual remainder sliver in col
-						if(((size) - j == remainderSegment) && remainderSegment != 0) {
-							arr = new int[4]; 
-							arr[0] = rowCount;
-							arr[1] = rowCount + (remainderSegment-1);
-							
-							arr[2] = j;
-							arr[3] = j + (remainderSegment-1);
-
-							jobQueue.add(arr);	
-							break;
-						}
-						
-						arr = new int[4]; 
-						arr[0] = rowCount;
-						arr[1] = rowCount + (remainderSegment-1);
-						
-						arr[2] = j;
-						arr[3] = j + (dataSplitSizeColCount-1);
-
-						jobQueue.add(arr);
-
-					}	
-					//this should break the loop
-					rowCount+=remainderSegment;
-				}
-				break;
+//			case data_split:
+//				//Data split one
+//
+//				int dataSplitSizeColCount;
+//				int remainderSegment;
+//				
+//				//this will also stop dataSplitSize being zero
+//				if(workerReqSize > matrixSize) {
+//					System.out.println("Worker size greater than matrix - fixing partition length");
+//					//firstly we will only use workers with N >= 10
+//					//there will be too little work so we just make small enough segments
+//					//i.e. likely 2*2 to split between some workers
+//					dataSplitSizeColCount = 2;
+//					
+//					//remainder segment stays the same
+//				}
+//				else {					
+//					dataSplitSizeColCount = (int)size/count;
+//				}
+//
+//				
+//				remainderSegment = size % dataSplitSizeColCount;
+//				boolean isUneven = false;
+//				if(remainderSegment != 0) {
+//					isUneven = true;
+//				}
+//				
+//				
+//				
+//				int rowCount = 0;
+//				
+//				//add row splits
+//				while(rowCount < ((size) - remainderSegment)) {
+//					for(int j = 0; j <  size; j+=dataSplitSizeColCount) {
+//						
+//						//potentiual remainder sliver in col
+//						if(( (size) - j== remainderSegment) && remainderSegment != 0) {
+//							arr = new int[4]; 
+//							arr[0] = rowCount;
+//							arr[1] = rowCount + (dataSplitSizeColCount-1);
+//							
+//							arr[2] = j;
+//							arr[3] = j + (remainderSegment-1);
+//
+//							jobQueue.add(arr);	
+//							break;
+//						}
+//						
+//						arr = new int[4]; 
+//						arr[0] = rowCount;
+//						arr[1] = rowCount + (dataSplitSizeColCount-1);
+//						
+//						arr[2] = j;
+//						arr[3] = j + (dataSplitSizeColCount-1);
+//
+//						jobQueue.add(arr);	
+//
+//						
+//					}					
+//					rowCount += dataSplitSizeColCount;
+//				}
+//				
+//				//may have a row left to allocate
+//				while(rowCount <= (size) && remainderSegment != 0) {
+//					for(int j = 0; j <  size; j+=dataSplitSizeColCount) {
+//
+//						//potentiual remainder sliver in col
+//						if(((size) - j == remainderSegment) && remainderSegment != 0) {
+//							arr = new int[4]; 
+//							arr[0] = rowCount;
+//							arr[1] = rowCount + (remainderSegment-1);
+//							
+//							arr[2] = j;
+//							arr[3] = j + (remainderSegment-1);
+//
+//							jobQueue.add(arr);	
+//							break;
+//						}
+//						
+//						arr = new int[4]; 
+//						arr[0] = rowCount;
+//						arr[1] = rowCount + (remainderSegment-1);
+//						
+//						arr[2] = j;
+//						arr[3] = j + (dataSplitSizeColCount-1);
+//
+//						jobQueue.add(arr);
+//
+//					}	
+//					//this should break the loop
+//					rowCount+=remainderSegment;
+//				}
+//				break;
 			default:
 				break;
 			}
-				
-			int sized = jobQueue.size();
-//			for(int i = 0; i < sized; i++) {
-//				int array[] = jobQueue.peek();
-//				jobQueue.remove();
-//
-//				System.out.println( Integer.toString(array[0]) + " , " + Integer.toString(array[1])
-//						+ ", " + Integer.toString(array[2]) + ", " + Integer.toString(array[3]));
-//
-//			}
+
 					
+	}
+	
+	//this is an add on step to the job queuing now that we are actually giving the vec data info to a cloud worker
+	//instead of having them access shared data through threading
+	public int setUpVectorJobsForMultiplication() {
+		
+		aCols = new HashMap<Integer, Double[][]>();
+		bRows = new HashMap<Integer, Double[][]>();
+		int ids = 0;
+		int totalCount = jobQueue.size();
+		
+		while(!jobQueue.isEmpty()) {
+			//pop job from queue
+			int[] jobIndexes = getJob();
+			// NOTE - job indexes
+			// [0] = aMatrixRowStart
+			// [1] = aMatrixRowEnd
+			// [2] = bMatrixColStart
+			// [3] = bMatrixEnd
+			
+			Double[][] aCol = getMatrixARows(jobIndexes[0], jobIndexes[1]);
+			Double[][] bRow = getMatrixBColumns(jobIndexes[2], jobIndexes[3]);
+			
+			//Add both cols and rows to maps so each task has a unique ID 
+			//conveniently the same iD will reference the same row and cols that need to be multiplied
+			aCols.put(ids, aCol);
+			bRows.put(ids, bRow);
+			ids++;
+			
+		}
+		
+		return totalCount;
+		
 	}
 	
 	/// Takes matrix size and partitioning type form client request
@@ -481,7 +530,8 @@ public class ThreadManager extends Thread  {
 								break;
 			case "row_full":  partitionType = partition_type.row_full;
 								break;
-			case "data_split": partitionType = partition_type.data_split;
+			case "data_split": System.out.println("'data_split' calculation type no longer available");
+				partitionType = partition_type.none; // partition_type.data_split;
 								break;
 			default: partitionType = partition_type.none;
 					break;				
@@ -493,39 +543,35 @@ public class ThreadManager extends Thread  {
 			
 	}
 	
-	private void startWorkers() {
-		
-		ArrayList<CalculationThread> workerList = new ArrayList<CalculationThread>();
-		//only making workers for larger matrix
-		if(matrixSize > 10) {
-			//set worker count also
-	        for(int i = 0; i < workerReqSize; i++) {
-	        	CalculationThread thread = new CalculationThread(this.idCount++, partitionType, jobId);
-	        	workerList.add(thread);
-	        	thread.start();
-	        }
-		}
-		else {
-			
-			if(isDEBUGGING) {
-				System.out.println("Matrix request is small - using only 1 worker");			
-				}
-			CalculationThread thread = new CalculationThread(this.idCount++, partitionType, jobId);
-			thread.start();
-		}
-		
-		for(CalculationThread thread : workerList) {
-			try {
-				thread.join();
-			} catch (InterruptedException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-        }
-		
-		workerList = null;
-			
 
+	
+	private Job startWorkers(int workerCount, int jobCount, int jobID) {		
+
+		Job newJob;
+		int count = 0;
+		
+		//setup the vector jobs depending on the operation type
+		switch(operationType) {
+			case "multiplication":
+				//allocates vector to 2 different hashmaps
+				count = setUpVectorJobsForMultiplication();
+				break;
+
+		
+		}
+		
+		
+		//aCols and bRows were calculated in the above switch
+		newJob = new Job(jobID, aCols, bRows, operationType);
+		
+		//will allocate one job at a time to the lowest load worker
+		for(int j = 0; j < (jobCount); j++) {
+			int workerID = getLowestLoadWorker();
+			giveTaskToWorker(newJob.vecAJobs, newJob.vecBJobs, workerID);
+		}
+		
+
+		return newJob;
 	} 
 	
 	private MatrixResult calculate() {
@@ -581,6 +627,34 @@ public class ThreadManager extends Thread  {
 		
 		return new MatrixResult(result, errorcode);
 	}
+	
+	private int giveTaskToWorker(Map<Integer, Double[][]> vecAJobs, Map<Integer, Double[][]> vecBJobs, int workerId) {
+		
+		
+		
+		//socket code to contact worker
+		
+		return 0;
+		
+	}
+	
+
+	private int getLowestLoadWorker() {
+		int lowest = PEAK_LOAD;
+		int lowestID = -1;
+		for(Map.Entry<Integer, Integer> a : workerIDs.entrySet()) {
+			if(a.getValue() < lowest) {
+				lowest = a.getValue();
+				lowestID = a.getKey();
+			}
+		}
+		
+		workerIDs.put(lowestID, workerIDs.get(lowestID) + 1);
+		
+		return lowestID;
+		
+	}
+	
 }
 
 
