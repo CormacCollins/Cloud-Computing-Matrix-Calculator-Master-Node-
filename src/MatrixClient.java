@@ -33,6 +33,10 @@ public class MatrixClient {
 	}
 	BinaryOperation operation;
 	//setup client with requested port
+			
+	
+	//setup client with requested port
+	//TODO: respond to each exception
 	public MatrixClient(String hostname, int port) {
 
 		
@@ -49,7 +53,11 @@ public class MatrixClient {
 		}
 
 	}
+
 	/*
+=======
+	
+>>>>>>> 413d0570f947d842fc40aa8b728882710285d587
 	private void setMatrixSize(int n, String command) throws IOException {
 		System.out.println("Requesting size " + n);
 		BufferedWriter writer = new BufferedWriter(out);
@@ -57,16 +65,18 @@ public class MatrixClient {
 		writer.newLine();
 		writer.flush();
 	}
+<<<<<<< HEAD
 	*/
-
 	//at this stage don't need to use 'command'
 	
 	public MatrixResult calculate(String command, int matrixSize) {		
 		try {
+
 			//setMatrixSize(matrixSize, command);
 			dos = new DataOutputStream(socket.getOutputStream());
 			dos.writeInt(matrixSize);
 			dos.writeUTF(operation.toString());
+			//setMatrixSize(matrixSize, command);
 		} catch (IOException e) {
 			System.out.println("Error writing matrixSize to server");
 			e.printStackTrace();
@@ -117,7 +127,6 @@ public class MatrixClient {
 		
 		String hostname = "localhost";
 		int port = 1024;
-		
 		int matrixSize = 100	;
 		
 		if (args.length != 3) {
@@ -138,13 +147,21 @@ public class MatrixClient {
 		String rowCol = "row_column";
 		
 		
-		
 		MatrixClient client = new MatrixClient(hostname, port);
 		
 		MatrixResult result = client.calculate(rowCol, matrixSize);
+
+		String rowFull = "row_full";
+		String dataSp = "data_split";
 		
+		
+		//MatrixClient client = new MatrixClient(hostname, port);
+		long startTime = System.nanoTime();
+		//MatrixResult result = client.calculate(rowCol, matrixSize);
+		long endTime = System.nanoTime();
 
-
+		long duration = (endTime - startTime) / 1000000;  //divide by 1000000 to get milliseconds.
+		System.out.println("Time till conneciton return " + duration);
 
 		
 //		try {

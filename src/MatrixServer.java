@@ -4,6 +4,8 @@ import java.io.DataInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.ObjectOutputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.io.Serializable;
 import java.lang.reflect.Executable;
@@ -19,6 +21,7 @@ public class MatrixServer {
 	private static int size;
 	private static MatrixResult res;
 	private static String op;
+	//public static ArrayList<CalculationThread> threadList = new ArrayList<CalculationThread>();
 	
 	public static void main(String[] args) {
 		// TODO Auto-generated method stub
@@ -63,7 +66,11 @@ public class MatrixServer {
 				out.writeObject(res);
 
 				//ThreadManager calculationThread = new ThreadManager(socket, count, workerCount);
-				//calculationThread.start();			
+				//calculationThread.start();
+				matrixServer.setSocket(socket);				
+
+				//ThreadManager calculationThread = new ThreadManager(socket, count, workerCount);
+				//calculationThread.start();		
 				count++;
 
 			}
@@ -80,6 +87,9 @@ public class MatrixServer {
 		this.socket = socket;
 	}
 	/*
+=======
+	
+>>>>>>> 413d0570f947d842fc40aa8b728882710285d587
 	public void execute() {
 		try {
 			BufferedReader reader = new BufferedReader(
@@ -113,6 +123,7 @@ public class MatrixServer {
 		}
 	}
 	
+<<<<<<< HEAD
 */
 }
 

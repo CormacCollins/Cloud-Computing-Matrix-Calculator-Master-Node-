@@ -7,5 +7,3 @@ public enum Status {
 	calc_error,
 	client_request_read_error
 }
-
-
