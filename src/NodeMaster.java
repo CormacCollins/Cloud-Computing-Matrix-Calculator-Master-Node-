@@ -1,29 +1,20 @@
 import java.util.Queue;
-import java.io.Console;
 import java.io.IOException;
-import java.security.KeyStore.Entry;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Map;
 
 import org.ejml.data.DMatrixRMaj;
 import org.ejml.simple.SimpleMatrix;
-import org.omg.CORBA.PRIVATE_MEMBER;
 
 public class NodeMaster extends Thread {
-	
-	//Socket information
-	private int jobId;
+
 	private String operationType;
 	private static double[][] aMatrix;
 	private static double[][] bMatrix;	
-	private static double[][] result;
-	private int workersCount;
 	private int matrixSize;
-	
-
 	private double[][] answer;
-	private boolean isFinished = false;
+	private int workersCount;
 	
 	//general queue array structure:
 	// [0] = aMatrixRowStart
@@ -33,21 +24,17 @@ public class NodeMaster extends Thread {
 	private Queue<int[]> jobQueue;
 	
 	//added data structure for cloud comp version
+	// -------------------------------------------
+	// for number of tasks that make up a job
 	int taskIDCount = 0;
 	Map<Integer, int[]> inProgressJobs = new HashMap<Integer, int[]>();
-
-	Map<Integer, Double[][]> bRows;
 	
-	private static Job currentJob;
-	
-	//id for each worker and his jobId's
+	//id for each worker and it's jobId's
 	int uniqueIDIncrementorForWOrkers = 0;
-	Map<Integer, Integer[]> WorkerJobMap = new HashMap<Integer, Integer[]>();
+	Map<Integer, Integer[]> workerJobMap = new HashMap<Integer, Integer[]>();
 	
+	//arbitrary peak for load balancing - to be changeds
 	int PEAK_LOAD = 100;
-  
-	
-	private boolean isDEBUGGING = false;
 	
 	
 	// ---------------------------------------------------------------
@@ -59,34 +46,45 @@ public class NodeMaster extends Thread {
 		return jobQueue.isEmpty() && inProgressJobs.isEmpty();
 	}
 	
+	//request can be status or to stop job etc.
+	//TODO: parsing of request etc.
+	public String makeRequest(String req) {
+		return "Requesting Not Implemented";
+	}
 	
-	public NodeMaster(String opType, double[][] matrixA, double[][] matrixB, int id, int currentWorkerAvailablity) throws IOException  {
+	
+	public NodeMaster(String opType, double[][] matrixA, double[][] matrixB, int id, int currentWorkerAvailablity) throws IOException  {	
 		workersCount = currentWorkerAvailablity;
 		setUpJob(matrixA, matrixB, opType, id);
-		Map<Integer, Integer> workerTable = getWorkerTable();
-		Map<Integer, int[]> inProgressJobs = new HashMap<Integer, int[]>();
 	}
 
 	
 	public void run()  {
 		sendWork();	
-		isFinished = true;
 //		System.out.println("Answer: ");
 //		SimpleMatrix simpleMatrix = new SimpleMatrix(answer);
 //		simpleMatrix.print();
 	}	
 	
+
 	public double[][] getAnswer(){
-		return answer;
-		
+		if(jobIsFinished()) {
+			return answer;	
+		}
+		else {
+			System.out.println("Job not finished yet - answer not available");
+			return null;
+		}
 	}
 	
 	// ---------------------------------------
 	// --------- private calc funcs ---------
 	// ---------------------------------------
 	
+	// -----------------------------------------------------------------------
 	// should send all work of to nodes
 	// later improvements may have checking during this loop for any failures
+	// -----------------------------------------------------------------------
 	private void sendWork() {
 		switch (operationType) {
 		case "multiplication":
@@ -223,13 +221,6 @@ public class NodeMaster extends Thread {
 		}
 		
 		return lowestId;
-	}
-	
-	
-	//TODO:will get from the server class a list of the worker Id's and their load 
-	private Map<Integer, Integer> getWorkerTable() {		
-		Map<Integer, Integer> workerTable = new HashMap<Integer, Integer>();
-		return workerTable;
 	}
 	
 	private void setUpJob(double[][] matrixA, double[][] matrixB, String opType, int id) {

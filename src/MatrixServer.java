@@ -9,14 +9,21 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.sql.Date;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Random;
 
 import org.ejml.dense.row.RandomMatrices_DDRM;
 import org.ejml.simple.SimpleMatrix;
+import org.omg.CORBA.PRIVATE_MEMBER;
 
 
 public class MatrixServer {
 	protected Socket socket;
+	//unique id that's incremented for each use
+	static int uniqueIdCount = 0;
+	//unique look up hash for all worker nodeMasters
+	private Map<Integer, NodeMaster> nodeMasterList = new HashMap<Integer, NodeMaster>();
 	//public static ArrayList<CalculationThread> threadList = new ArrayList<CalculationThread>();
 	
 	
@@ -58,11 +65,14 @@ public class MatrixServer {
 				matrixServer.setSocket(socket);				
 
 				//will run random tests on mul add and subtraction
-				matrixServer.fullCalculationTest();
+				//matrixServer.fullCalculationTest();
 				
-//				double[][] arr = {{1,4}, {1,4}};
-//				double[][] arr2 = {{2,4}, {2,4}};
-//				
+				double[][] arr = {{1,4}, {1,4}};
+				double[][] arr2 = {{2,4}, {2,4}};
+				
+				NodeMaster nMaster = new NodeMaster("multiplication", arr ,arr2, uniqueIdCount, 5);
+				nMaster.start();   //.start() for threading
+				uniqueIdCount++;
 //				
 //				NodeMaster nMaster = new NodeMaster("addition", arr ,arr2, count, 2);
 //				nMaster.start();
@@ -85,6 +95,41 @@ public class MatrixServer {
 		this.socket = socket;
 	}
 	
+	
+	// ----------------------------------------------------------------
+	// create new nodeMaster and get the unique Job id assigned to it
+	// ----------------------------------------------------------------
+	private int createNewNodeMaster(String opType, double[][] matrixA, double[][] matrixB, int currentWorkerAvailablity) {
+		NodeMaster nMaster;
+		try {
+			nMaster = new NodeMaster("multiplication", matrixA ,matrixB, uniqueIdCount, 5);
+		} catch (IOException e) {
+			nMaster = null;
+			System.out.println("Error constructing NodeMaster id: " + uniqueIdCount);
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		nodeMasterList.put(uniqueIdCount, nMaster);
+		return uniqueIdCount++;
+	}
+	
+	
+	//TODO: May need the req and or answer to be parsed more before returning to server
+	//request sent and: answer / info / outcome is returned
+	private String requestToMasterNode(int id, String request) {
+		return getNodeMasterByID(id).makeRequest(request);
+	}
+	
+	
+	// ------------------------------------------------------
+	// get the reference to master working on particular job
+	// ------------------------------------------------------
+	private NodeMaster getNodeMasterByID(int id) {
+		return nodeMasterList.get(id);
+	}
+	
+	
 	public void execute() {
 		try {
 			BufferedReader reader = new BufferedReader(
@@ -105,9 +150,6 @@ public class MatrixServer {
 //			writer.write(""+result);
 			writer.newLine();
 			writer.flush();
-//			
-			
-			
 			
 			// close the stream
 			reader.close();
@@ -118,6 +160,9 @@ public class MatrixServer {
 		}
 	}
 	
+	// -------------------------------------------------
+	// Wrapper for testing function to test full range
+	// ------------------------------------------------
 	public void fullCalculationTest() throws IOException {
 		
 		System.out.println("Testing for worker count 1");	
@@ -141,8 +186,13 @@ public class MatrixServer {
 		testFunc("subtraction", 100);
 	}
 	
+	
+	// ------------------------------------------------------------
+	// Will test matrix operations with large variets of matrix size
+	// THis is to maintain correctness throughout production
+	// -------------------------------------------------------------
 	public void testFunc(String operationType, int workers) throws IOException {
-		int count = 0;
+		int id = 0;
 		int testCount = 100;
 		boolean allAreTrue = true;
 		for(int i = 0; i < testCount; i++) {
@@ -165,8 +215,8 @@ public class MatrixServer {
 			//double[][] arr2 = {{2,4}, {2,4}};
 			
 		
-			NodeMaster nMaster = new NodeMaster(operationType, arr ,arr2, count, workers);
-			nMaster.run();
+			NodeMaster nMaster = new NodeMaster(operationType, arr ,arr2, id, workers);
+			nMaster.run();   //.start() for threading
 			boolean isCorrect = false;
 			SimpleMatrix calculatedAns = new SimpleMatrix(nMaster.getAnswer());
 			switch (operationType) {
