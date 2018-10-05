@@ -1,10 +1,15 @@
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.DataInputStream;
+
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.ObjectInputStream;
+
+import java.io.IOException;
+import java.io.InputStreamReader;
+
 import java.io.ObjectOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -16,16 +21,26 @@ import java.net.Socket;
 import java.sql.Date;
 import java.util.ArrayList;
 
+
 import java.time.*;
+
+	
+
+
 public class MatrixServer {
 	protected Socket socket;
-	
+	private static DataInputStream dis = null;
+
 	private static int size;
 	private static MatrixResult res;
 	private static String op;
 	//public static ArrayList<CalculationThread> threadList = new ArrayList<CalculationThread>();
 	
+
 	public static void main(String[] args) throws ClassNotFoundException {
+
+	
+
 		// TODO Auto-generated method stub
 		int port = 1024;
 		int socketPort = 1000;
@@ -34,6 +49,7 @@ public class MatrixServer {
 		int []socketList = new int[10000];
 		int socketIndex = 0;
 		String id;
+
 		if (args.length == 2) {
 			try {
 				socketPort = Integer.parseInt(args[0]);
@@ -62,6 +78,7 @@ public class MatrixServer {
 				//create new server to communicate permanently with client				
 				MatrixServer matrixServer = new MatrixServer();
 				matrixServer.setSocket(socket);	
+
 				ObjectInputStream in = new ObjectInputStream(socket.getInputStream());
 				SendWork rec = (SendWork)in.readObject();
 				if(rec.op ==1 && rec.op ==2 && rec.op ==3) {
@@ -81,6 +98,14 @@ public class MatrixServer {
 					//use the id to get the info
 				}
 				}
+
+				dis = new DataInputStream(socket.getInputStream());
+				size = dis.readInt();
+				op = dis.readUTF();
+				ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream());
+				out.writeObject(res);
+
+
 				//ThreadManager calculationThread = new ThreadManager(socket, count, workerCount);
 				//calculationThread.start();
 				matrixServer.setSocket(socket);				
@@ -103,7 +128,47 @@ public class MatrixServer {
 		this.socket = socket;
 	}
 	/*
+<<<<<<< HEAD
 
+=======
+=======
+	
+>>>>>>> 413d0570f947d842fc40aa8b728882710285d587
+	public void execute() {
+		try {
+			BufferedReader reader = new BufferedReader(
+					new InputStreamReader(socket.getInputStream()));
+			// read the message from client and parse the execution
+			String line = reader.readLine();
+
+
+			// write the result back to the client
+			BufferedWriter writer = new BufferedWriter(
+					new OutputStreamWriter(socket.getOutputStream()));
+			
+			// ---- WRITE BACK OUTPUT ---- //
+			
+			writer.write("Recieved: " + line + "Giving back the result....");
+			writer.newLine();
+			writer.write("Here is the result");
+//			writer.write(""+result);
+			writer.newLine();
+			writer.flush();
+//			
+			
+			
+			
+			// close the stream
+			reader.close();
+			writer.close();
+		}
+		catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+	
+<<<<<<< HEAD
+>>>>>>> 20240eb748fd11ee07d022063ca9d421218a9dd7
 */
-}
+	}
 

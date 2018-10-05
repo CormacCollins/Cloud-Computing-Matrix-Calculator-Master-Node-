@@ -10,25 +10,34 @@ import java.io.OutputStreamWriter;
 import java.net.Socket;
 import java.util.Arrays;
 import java.util.concurrent.CountDownLatch;
+
 import java.util.Scanner;
+
+
+
 
 public class MatrixClient {
 	private static Socket socket = null;
 	//writing simple intiger for matrix size
 	private static ObjectOutputStream out = null;
-	//private static DataOutputStream dos = null;
+	private static DataOutputStream dos = null;
 	private static DataInputStream dis = null;
 	//recieving more complex serializable object
 	private static ObjectInputStream in = null;
+
 	//private ObjectOutputStream out = null;
 	//private String IPaddress = "xxxxxxx";
 	//private String username = "xxxxxx";
 	//private String password = "xxxxxxxxx";
+
 	private static double [][] a =null;
 	private static double [][] b =null;
 	static MatrixResult res;
 
 	private int id;
+
+
+
 			
 	public enum BinaryOperation{
 		ADD,
@@ -48,8 +57,9 @@ public class MatrixClient {
 		try {
 			// create a socket
 			socket = new Socket(hostname, port);
-			//
-			
+			//out = new OutputStreamWriter(socket.getOutputStream());
+			//in = new ObjectInputStream(socket.getInputStream());			
+
 		}
 		catch (Exception e) {
 			e.printStackTrace();
@@ -62,9 +72,29 @@ public class MatrixClient {
 	
 	
 	
+	
+
+	/*
+=======
+	
+>>>>>>> 413d0570f947d842fc40aa8b728882710285d587
+	private void setMatrixSize(int n, String command) throws IOException {
+		System.out.println("Requesting size " + n);
+		BufferedWriter writer = new BufferedWriter(out);
+		writer.write(command + ":" + Integer.toString(n));
+		writer.newLine();
+		writer.flush();
+	}
+<<<<<<< HEAD
+	*/
+	//at this stage don't need to use 'command'
+	
+	
+	
 	public static  void CreateMatrix(int size) {
 		a = new double[size][size];
 		b = new double[size][size];
+
 		for (int i = 0; i < size; i++) {
 			for (int j = 0; j < size; j++) {
 				a[i][j] = (int) (Math.random() * 10);
@@ -87,6 +117,7 @@ public class MatrixClient {
 			System.out.println(Arrays.toString(row));
 
 	}
+
 	// main function for send and recive 
 	public static void sendObject() throws IOException, ClassNotFoundException {
 		String id = null;
@@ -129,14 +160,14 @@ public class MatrixClient {
 		socket.close();
 		
 	}
-	
+
 	public static void main(String[] args) {
 		
 		String hostname = "localhost";
 		int port = 1024;
 		int matrixSize = 100	;
 		
-		
+
 		if (args.length != 3) {
 			System.out.println("Use the default setting...");
 		} 
@@ -150,6 +181,7 @@ public class MatrixClient {
 //			System.out.println("Process " + s);
 			
 		}
+
 		String rowCol = "row_column";
 		MatrixClient client = new MatrixClient(hostname, port);
 		try {
@@ -162,11 +194,9 @@ public class MatrixClient {
 		
 		
 
-		String rowFull = "row_full";
-		String dataSp = "data_split";
 		
+
 		
-	
 
 		
 //		try {
@@ -176,7 +206,11 @@ public class MatrixClient {
 //			e.printStackTrace();
 //		}
 //		
+
 		switch (res.stat) {
+
+	
+
 			case successful_calculation:
 				System.out.println("Result successful");
 //				for(int i = 0; i < matrixSize; i++) {
