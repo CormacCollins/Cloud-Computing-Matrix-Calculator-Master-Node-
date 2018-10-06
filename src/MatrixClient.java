@@ -40,7 +40,8 @@ public class MatrixClient {
 	public enum BinaryOperation{
 		ADD,
 		MUTIPLY,
-		SUBSTRACT
+		SUBSTRACT,
+		STATUS	
 	}
 	BinaryOperation operation;
 	//setup client with requested port
