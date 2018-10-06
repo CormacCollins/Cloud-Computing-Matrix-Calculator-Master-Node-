@@ -109,13 +109,29 @@ public class MatrixClient {
 
 	}
 	
-	public static void print_2D(Integer[][] c2) {
-		for (Integer[] row : c2)
+	public static void print_2D(double[][] c2) {
+		for (double[] row : c2)
 
 			// converting each row as string
 			// and then printing in a separate line
 			System.out.println(Arrays.toString(row));
 
+	}
+	
+
+	// input matrix by hand 
+	public static void TypeMatrix(int size,double[][] a) {
+		Scanner sc = new Scanner(System.in);
+		a = new double[size][size];	
+		System.out.println("enter the matrix you want, ','for divide each element,and';'for switch row ");
+		String input = sc.nextLine();
+		String[] row = input.split(";");
+		for(int i = 0;i<size;i++) {
+			String[] cell = row[i].split(",");
+			for(int j = 0;j<size;j++) {
+				a[i][j]= Double.parseDouble(cell[j]);
+			}
+		}
 	}
 
 	// main function for send and recive 
@@ -132,11 +148,13 @@ public class MatrixClient {
 		if(op == 1 && op ==2 && op == 3) {
 			System.out.println("do you want to input the matrix by hand?");
 			boolean temp = sc.nextBoolean();
+			System.out.println("inter the size of matrix you want");
+			matrixSize = sc.nextInt();
 			if(temp) {
-				
+				TypeMatrix(matrixSize,a);
+				TypeMatrix(matrixSize,b);
 			}else {
-				System.out.println("inter the size of matrix you want");
-				matrixSize = sc.nextInt(); 
+				 
 				CreateMatrix(matrixSize);
 			}
 		}else if (op ==4 && op == 5) {
@@ -150,9 +168,10 @@ public class MatrixClient {
 		out.writeObject(send);
 		if(op == 5) {
 			res = (MatrixResult) in.readObject();
+			print_2D(res.answer);
 		}else {
 			output = dis.readUTF();
-			System.out.println(output);
+			System.out.println("this is your work id, plz keep it"+output);
 		}
 		out.close();
 		in.close();
