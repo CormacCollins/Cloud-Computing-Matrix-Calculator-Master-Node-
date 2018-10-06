@@ -1,5 +1,4 @@
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
+
 import java.io.DataInputStream;
 
 import java.io.DataOutputStream;
@@ -78,13 +77,16 @@ public class MatrixServer {
 				//create new server to communicate permanently with client				
 				MatrixServer matrixServer = new MatrixServer();
 				matrixServer.setSocket(socket);	
+				System.out.println("create finished ");
 
 				ObjectInputStream in = new ObjectInputStream(socket.getInputStream());
 				SendWork rec = (SendWork)in.readObject();
-				if(rec.op ==1 && rec.op ==2 && rec.op ==3) {
+				System.out.println("received");
+				if(rec.op ==1 || rec.op ==2 || rec.op ==3) {
 					DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
 					
 					String key = LocalDate.now().toString() +LocalTime.now().toString();
+					
 					dos.writeUTF(key);
 					
 				}else  {
@@ -99,11 +101,7 @@ public class MatrixServer {
 				}
 				}
 
-				dis = new DataInputStream(socket.getInputStream());
-				size = dis.readInt();
-				op = dis.readUTF();
-				ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream());
-				out.writeObject(res);
+				
 
 
 				//ThreadManager calculationThread = new ThreadManager(socket, count, workerCount);
