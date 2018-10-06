@@ -1,10 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <projectDescription>
-<<<<<<< HEAD
-	<name>assignment3</name>
-=======
-	<name>MatrixServer</name>
->>>>>>> 413d0570f947d842fc40aa8b728882710285d587
+	<name>src</name>
 	<comment></comment>
 	<projects>
 	</projects>

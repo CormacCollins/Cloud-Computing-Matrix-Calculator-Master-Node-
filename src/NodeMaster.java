@@ -38,7 +38,7 @@ public class NodeMaster extends Thread {
 
 	Map<Integer, Double[][]> bRows;
 	
-	private static Job currentJob;
+	//private static Job currentJob;
 	
 	//id for each worker and his jobId's
 	int uniqueIDIncrementorForWOrkers = 0;
