@@ -19,11 +19,9 @@ import java.util.Scanner;
 public class MatrixClient {
 	private static Socket socket = null;
 	//writing simple intiger for matrix size
-	private static ObjectOutputStream out = null;
-	private static DataOutputStream dos = null;
-	private static DataInputStream dis = null;
-	//recieving more complex serializable object
-	private static ObjectInputStream in = null;
+	
+
+
 
 	//private ObjectOutputStream out = null;
 	//private String IPaddress = "xxxxxxx";
@@ -33,7 +31,18 @@ public class MatrixClient {
 	private static double [][] a =null;
 	private static double [][] b =null;
 	static MatrixResult res;
+	private static ObjectOutputStream out;
 
+
+
+
+	private static DataInputStream dis;
+
+
+
+
+	private static ObjectInputStream in;
+	
 	private int id;
 
 
@@ -42,7 +51,8 @@ public class MatrixClient {
 	public enum BinaryOperation{
 		ADD,
 		MUTIPLY,
-		SUBSTRACT
+		SUBSTRACT,
+		STATUS	
 	}
 	BinaryOperation operation;
 	//setup client with requested port
@@ -50,10 +60,7 @@ public class MatrixClient {
 	
 	//setup client with requested port
 	//TODO: respond to each exception
-	public MatrixClient(String hostname, int port) {
-
-		
-		
+	public MatrixClient(String hostname, int port) {		
 		try {
 			// create a socket
 			socket = new Socket(hostname, port);
@@ -172,9 +179,48 @@ public class MatrixClient {
 //			output = dis.readUTF();
 //			System.out.println("this is your work id, plz keep it"+output);
 		
+		Scanner sc = new Scanner (System.in);
+		System.out.println("input the opreation you want ");
+		System.out.println("1 for add \n 2for multiply \n 3 for minus ");
+		System.out.println("4 for check status \n 5 for get result");
+		int op = sc.nextInt();
+		if(op == 1 || op ==2 || op == 3) {
+			System.out.println("do you want to input the matrix by hand?");
+			boolean temp = sc.nextBoolean();
+			System.out.println("inter the size of matrix you want");
+			matrixSize = sc.nextInt();
+			if(temp) {
+				TypeMatrix(matrixSize,a);
+				TypeMatrix(matrixSize,b);
+			}else {
+				 
+				CreateMatrix(matrixSize);
+			}
+		}else if (op ==4 || op == 5) {
+			System.out.println("enter the id");
+			id = sc.nextLine();
+		}
+		send = new SendWork(op,a,b,id);
+		System.out.println("send created");
+		ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream());
+		System.out.println("a");
+		
+		
+		
+		out.writeObject(send);
+		System.out.println("send finished");
+		if(op == 5) {
+			ObjectInputStream in = new ObjectInputStream(socket.getInputStream());
+			res = (MatrixResult) in.readObject();
+			print_2D(res.answer);
+			in.close();
+		}else {
+			DataInputStream dis = new DataInputStream(socket.getInputStream());
+			output = dis.readUTF();
+			System.out.println("this is your work id, plz keep it"+output);
+			dis.close();
+		}
 		out.close();
-		in.close();
-		dis.close();
 		socket.close();
 		
 	}
@@ -183,7 +229,7 @@ public class MatrixClient {
 		
 		String hostname = "localhost";
 		int port = 1024;
-		int matrixSize = 100	;
+		
 		
 
 		if (args.length != 3) {
@@ -193,8 +239,6 @@ public class MatrixClient {
 			//use cmd line args
 			hostname = args[0];
 			port = Integer.parseInt(args[1]);
-			matrixSize = Integer.parseInt(args[2]);
-
 //			String s = args[3];
 //			System.out.println("Process " + s);
 			
@@ -209,52 +253,7 @@ public class MatrixClient {
 		}catch(ClassNotFoundException e) {
 			e.printStackTrace();
 		}
-		
-		
-
-		
-
-		
-
-		
-//		try {
-//			Thread.sleep(1000000);
-//		} catch (InterruptedException e) {
-//			// TODO Auto-generated catch block
-//			e.printStackTrace();
-//		}
-//		
-
-		switch (res.stat) {
-
-	
-
-			case successful_calculation:
-				System.out.println("Result successful");
-//				for(int i = 0; i < matrixSize; i++) {
-//					for(int j = 0; j < matrixSize; j++) {
-//						System.out.print(result.answer[i][j] + ", ");
-//					}
-//					System.out.println();
-//				}
-				break;
-			case network_error:
-				System.out.println("Connecection error - please check connection");
-				break;
-			case invalid_paramaters:
-				System.out.println("Invalid params needs format '	");
-				break;
-			case calc_error:
-				System.out.println("Sorry there was an erorr with the calculation");
-				break;
-			case client_request_read_error:
-				System.out.println("Server could not read socket input from client");
-				break;
-			default:
-			break;
-		}
-		
-//		System.out.println("Result recieved: error code = " + result.errorcode);		
+			
 		
 	}
 
