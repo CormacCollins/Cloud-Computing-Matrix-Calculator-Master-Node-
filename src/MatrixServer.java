@@ -1,5 +1,16 @@
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
+import java.io.DataInputStream;
+
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.ObjectInputStream;
+
+import java.io.IOException;
+import java.io.InputStreamReader;
+
+import java.io.ObjectOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
@@ -18,16 +29,30 @@ import org.ejml.simple.SimpleMatrix;
 import org.omg.CORBA.PRIVATE_MEMBER;
 
 
+import java.time.*;
+
+	
+
+
 public class MatrixServer {
 	protected Socket socket;
 	//unique id that's incremented for each use
 	static int uniqueIdCount = 0;
 	//unique look up hash for all worker nodeMasters
 	private Map<Integer, NodeMaster> nodeMasterList = new HashMap<Integer, NodeMaster>();
+	private static DataInputStream dis = null;
+
+	private static int size;
+	private static MatrixResult res;
+	private static String op;
+
 	//public static ArrayList<CalculationThread> threadList = new ArrayList<CalculationThread>();
 	
+
+	public static void main(String[] args) throws ClassNotFoundException {
+
 	
-	public static void main(String[] args) {
+
 		// TODO Auto-generated method stub
 		int port = 1024;
 		int socketPort = 1000;
@@ -35,6 +60,8 @@ public class MatrixServer {
 		int workerCount = 1;
 		int []socketList = new int[10000];
 		int socketIndex = 0;
+		String id;
+
 		if (args.length == 2) {
 			try {
 				socketPort = Integer.parseInt(args[0]);
@@ -57,12 +84,47 @@ public class MatrixServer {
 			while(true) {
 				
 				Socket socket = serverSocket.accept();
-				//System.out.println("Socket number " + count + " open.");
+				System.out.println("Socket number " + count + " open.");
 				
 						
 				//create new server to communicate permanently with client				
 				MatrixServer matrixServer = new MatrixServer();
+				matrixServer.setSocket(socket);	
+
+				System.out.println("new Socket set");
+				
+				ObjectInputStream in = new ObjectInputStream(socket.getInputStream());
+				SendWork rec = (SendWork)in.readObject();
+				if(true) {
+					System.out.println("Recieved Work");
+					DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
+					
+					String key = LocalDate.now().toString() +LocalTime.now().toString();
+					dos.writeUTF(key);
+					
+				}else  {
+				DataInputStream dis = new DataInputStream(socket.getInputStream());
+				id = dis.readUTF();
+				if (rec.op == 5) {
+					//use the id to find the result 
+				ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream());
+				out.writeObject(res);
+				}else {
+					//use the id to get the info
+				}
+				}
+
+				dis = new DataInputStream(socket.getInputStream());
+				size = dis.readInt();
+				op = dis.readUTF();
+				ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream());
+				out.writeObject(res);
+
+
+				//ThreadManager calculationThread = new ThreadManager(socket, count, workerCount);
+				//calculationThread.start();
 				matrixServer.setSocket(socket);				
+
 
 				//will run random tests on mul add and subtraction
 				//matrixServer.fullCalculationTest();
@@ -79,6 +141,9 @@ public class MatrixServer {
 //			
 				//ThreadManager calculationThread = new ThreadManager(socket, count, workerCount);
 				//calculationThread.start();			
+
+				//ThreadManager calculationThread = new ThreadManager(socket, count, workerCount);
+				//calculationThread.start();	
 				count++;
 
 			}
@@ -94,7 +159,7 @@ public class MatrixServer {
 	public void setSocket(Socket socket) {
 		this.socket = socket;
 	}
-	
+
 	
 	// ----------------------------------------------------------------
 	// create new nodeMaster and get the unique Job id assigned to it
@@ -160,6 +225,7 @@ public class MatrixServer {
 		}
 	}
 	
+
 	// -------------------------------------------------
 	// Wrapper for testing function to test full range
 	// ------------------------------------------------
@@ -241,6 +307,8 @@ public class MatrixServer {
 			//System.out.println("Calculation " + count + ": " + isCorrect);	
 		}
 		System.out.println("All " + operationType + " calculations correct = " + allAreTrue);	
-	}
 
+
+	}
 }
+

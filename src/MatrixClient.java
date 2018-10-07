@@ -1,19 +1,51 @@
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.OutputStreamWriter;
 import java.net.Socket;
+import java.util.Arrays;
 import java.util.concurrent.CountDownLatch;
 
+import java.util.Scanner;
+
+
+
+
 public class MatrixClient {
-	private Socket socket = null;
+	private static Socket socket = null;
 	//writing simple intiger for matrix size
-	private OutputStreamWriter out = null;
+	private static ObjectOutputStream out = null;
+	private static DataOutputStream dos = null;
+	private static DataInputStream dis = null;
 	//recieving more complex serializable object
-	private ObjectInputStream in = null;
+	private static ObjectInputStream in = null;
+
+	//private ObjectOutputStream out = null;
+	//private String IPaddress = "xxxxxxx";
+	//private String username = "xxxxxx";
+	//private String password = "xxxxxxxxx";
+
+	private static double [][] a =null;
+	private static double [][] b =null;
+	static MatrixResult res;
+
+	private int id;
+
+
+
+			
+	public enum BinaryOperation{
+		ADD,
+		MUTIPLY,
+		SUBSTRACT
+	}
+	BinaryOperation operation;
+	//setup client with requested port
 			
 	
 	//setup client with requested port
@@ -25,16 +57,24 @@ public class MatrixClient {
 		try {
 			// create a socket
 			socket = new Socket(hostname, port);
-			//
-			out = new OutputStreamWriter(socket.getOutputStream());
-			in = new ObjectInputStream(socket.getInputStream());			
+			//out = new OutputStreamWriter(socket.getOutputStream());
+			//in = new ObjectInputStream(socket.getInputStream());			
+
 		}
 		catch (Exception e) {
 			e.printStackTrace();
 		}
 
 	}
+
+
+	//at this stage don't need to use 'command'
 	
+	
+	
+	
+
+	/*
 	private void setMatrixSize(int n, String command) throws IOException {
 		System.out.println("Requesting size " + n);
 		BufferedWriter writer = new BufferedWriter(out);
@@ -42,38 +82,110 @@ public class MatrixClient {
 		writer.newLine();
 		writer.flush();
 	}
-	
-
+	*/
 	//at this stage don't need to use 'command'
 	
-	public MatrixResult calculate(String command, int matrixSize) {		
-		try {
-			setMatrixSize(matrixSize, command);
-		} catch (IOException e) {
-			System.out.println("Error writing matrixSize to server");
-			e.printStackTrace();
+	
+	
+	public static  void CreateMatrix(int size) {
+		a = new double[size][size];
+		b = new double[size][size];
+
+		for (int i = 0; i < size; i++) {
+			for (int j = 0; j < size; j++) {
+				a[i][j] = (int) (Math.random() * 10);
+				b[i][j] = (int) (Math.random() * 10);
+				// number in matrix is around 1-10, to get better result
+			}
 		}
-		
-		MatrixResult res =  null;
-		try {
-			res = (MatrixResult) in.readObject();
-			out.close();
-			in.close();
-			socket.close();
-		} catch(Exception ex) { 
-			System.out.println("Error reading server result object");
-			System.out.println(ex.getStackTrace());
-		}
-		
-		return res;
+		// print matrix to check the result
+		//print_2D(a);
+		System.out.println("Created matrix \n");
+		//print_2D(b);
+
 	}
 	
+	public static void print_2D(double[][] c2) {
+		for (double[] row : c2)
+
+			// converting each row as string
+			// and then printing in a separate line
+			System.out.println(Arrays.toString(row));
+
+	}
+	
+
+	// input matrix by hand 
+	public static void TypeMatrix(int size,double[][] a) {
+		Scanner sc = new Scanner(System.in);
+		a = new double[size][size];	
+		System.out.println("enter the matrix you want, ','for divide each element,and';'for switch row ");
+		String input = sc.nextLine();
+		String[] row = input.split(";");
+		for(int i = 0;i<size;i++) {
+			String[] cell = row[i].split(",");
+			for(int j = 0;j<size;j++) {
+				a[i][j]= Double.parseDouble(cell[j]);
+			}
+		}
+	}
+
+	// main function for send and recive 
+	public static void sendObject() throws IOException, ClassNotFoundException {
+		String id = null;
+		int matrixSize = 100;
+		String output;
+//		Scanner sc = new Scanner (System.in);
+//		System.out.println("input the opreation you want ");
+//		System.out.println("1 for add \n 2for multiply \n 3 for minus ");
+//		System.out.println("4 for check status \n 5 for get result");
+//		int op = 3;
+//		
+//		if(op == 3) {
+//			System.out.println("do you want to input the matrix by hand?");
+//			boolean temp = sc.nextBoolean();
+//			System.out.println("inter the size of matrix you want");
+//			matrixSize = sc.nextInt();
+//			if(temp) {
+//				TypeMatrix(matrixSize,a);
+//				TypeMatrix(matrixSize,b);
+//			}else {
+//				 
+//				CreateMatrix(matrixSize);
+//			}
+//		}else if (op ==4 && op == 5) {
+//			System.out.println("enter the id");
+//			id = sc.nextLine();
+//		}
+		id = "1";
+		CreateMatrix(5);
+		SendWork send = new SendWork(3,a,b,id);		
+		out = new ObjectOutputStream(socket.getOutputStream());
+		dis = new DataInputStream(socket.getInputStream());
+		in = new ObjectInputStream(socket.getInputStream());
+		out.writeObject(send);
+		System.out.println("Wrote object");
+		
+		res = (MatrixResult) in.readObject();
+		print_2D(res.answer);
+		
+//			output = dis.readUTF();
+//			System.out.println("this is your work id, plz keep it"+output);
+		
+		out.close();
+		in.close();
+		dis.close();
+		socket.close();
+		
+	}
+
 	public static void main(String[] args) {
 		
 		String hostname = "localhost";
 		int port = 1024;
 		int matrixSize = 100	;
 		
+
 		if (args.length != 3) {
 			System.out.println("Use the default setting...");
 		} 
@@ -87,20 +199,22 @@ public class MatrixClient {
 //			System.out.println("Process " + s);
 			
 		}
-		
 
 		String rowCol = "row_column";
-		String rowFull = "row_full";
-		String dataSp = "data_split";
-		
-		
 		MatrixClient client = new MatrixClient(hostname, port);
-		long startTime = System.nanoTime();
-		MatrixResult result = client.calculate(rowCol, matrixSize);
-		long endTime = System.nanoTime();
+		try {
+			sendObject();
+		}catch( IOException e ) {
+			e.printStackTrace();
+		}catch(ClassNotFoundException e) {
+			e.printStackTrace();
+		}
+		
+		
 
-		long duration = (endTime - startTime) / 1000000;  //divide by 1000000 to get milliseconds.
-		System.out.println("Time till conneciton return " + duration);
+		
+
+		
 
 		
 //		try {
@@ -110,7 +224,11 @@ public class MatrixClient {
 //			e.printStackTrace();
 //		}
 //		
-		switch (result.stat) {
+
+		switch (res.stat) {
+
+	
+
 			case successful_calculation:
 				System.out.println("Result successful");
 //				for(int i = 0; i < matrixSize; i++) {
