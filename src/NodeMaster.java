@@ -25,13 +25,15 @@ public class NodeMaster extends Thread {
 	
 	//added data structure for cloud comp version
 	// -------------------------------------------
-	// for number of tasks that make up a job
-	int taskIDCount = 0;
-	Map<Integer, int[]> inProgressJobs = new HashMap<Integer, int[]>();
 	
+	
+	// for number of tasks that make up a job
+	private int taskIDCount = 0;
 	//id for each worker and it's jobId's
 	int uniqueIDIncrementorForWOrkers = 0;
 	Map<Integer, Integer[]> workerJobMap = new HashMap<Integer, Integer[]>();
+
+	Map<Integer, int[]> inProgressJobs = new HashMap<Integer, int[]>();
 	
 	//arbitrary peak for load balancing - to be changeds
 	int PEAK_LOAD = 100;
