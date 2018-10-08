@@ -8,8 +8,6 @@ import java.util.Map;
 import org.ejml.data.DMatrixRMaj;
 import org.ejml.simple.SimpleMatrix;
 
-import ejml.WorkerInfo;
-
 public class NodeMaster extends Thread {
 
 	private String operationType;
@@ -34,11 +32,12 @@ public class NodeMaster extends Thread {
 	
 	// for number of tasks that make up a job
 	private int taskIDCount = 0;
-	//id for each worker and it's jobId's
-	int uniqueIDIncrementorForWOrkers = 0;
-	Map<Integer, Integer[]> workerJobMap = new HashMap<Integer, Integer[]>();
 
-	Map<Integer, int[]> inProgressJobs = new HashMap<Integer, int[]>();
+	//String represents the id for a piece of work
+	// this is a concatonatino of the Master ID + ":" + workID
+
+	Map<String, Integer[]> workerJobMap = new HashMap<String, Integer[]>();
+	Map<String, int[]> inProgressJobs = new HashMap<String, int[]>();
 	
 	//arbitrary peak for load balancing - to be changeds
 	int PEAK_LOAD = 100;
@@ -106,7 +105,7 @@ public class NodeMaster extends Thread {
 					double[][] matrixBCols = bMatrix;
 					//give a small task an ID and store the indices we used 
 					//in case we lose this data and to keep track of it's progress and then completion
-					inProgressJobs.put(taskIDCount, indices);
+					inProgressJobs.put(createIdConcat(masterID, taskIDCount++), indices);
 		
 					
 					//System.out.println("Local calc....");
@@ -126,7 +125,7 @@ public class NodeMaster extends Thread {
 				double[][] matrixBCols = getMatrixBRows(indices[0], indices[1]);
 				//give a small task an ID and store the indices we used 
 				//in case we lose this data and to keep track of it's progress and then completion
-				inProgressJobs.put(taskIDCount, indices);
+				inProgressJobs.put(createIdConcat(masterID, taskIDCount++), indices);
 	
 				
 				//System.out.println("Local calc....");
@@ -147,7 +146,7 @@ public class NodeMaster extends Thread {
 				double[][] matrixBCols = getMatrixBRows(indices[0], indices[1]);
 				//give a small task an ID and store the indices we used 
 				//in case we lose this data and to keep track of it's progress and then completion
-				inProgressJobs.put(taskIDCount, indices);
+				inProgressJobs.put(createIdConcat(masterID, taskIDCount++), indices);
 	
 				
 				//System.out.println("Local calc....");
@@ -169,6 +168,9 @@ public class NodeMaster extends Thread {
 	}
 	
 	
+	private String createIdConcat(int primKey, int secondKey) {
+		return Integer.toString(primKey) + ":" + Integer.toString(secondKey);
+	}
 	
 	private void testCalcMultiplication(double[][] a, double[][] b, int taskID) {
 		SimpleMatrix aMatrix = new SimpleMatrix(a);
