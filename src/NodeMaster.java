@@ -1,6 +1,8 @@
 import java.util.Queue;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
+import java.net.Socket;
+import java.net.UnknownHostException;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Map;
@@ -16,16 +18,14 @@ public class NodeMaster extends Thread {
 	private int matrixSize;
 	private double[][] answer;
 	private int workersCount;
-	private int masterID;
-
-	
-	//general queue array structure:
 	// [0] = aMatrixRowStart
 	// [1] = aMatrixRowEnd
 	// [2] = bMatrixColStart
 	// [3] = bMatrixEnd	
 	private Queue<int[]> jobQueue;
-	
+	private int masterID;
+	private Socket socket;
+	Socket so;
 	//added data structure for cloud comp version
 	// -------------------------------------------
 	
@@ -47,6 +47,23 @@ public class NodeMaster extends Thread {
 	// ------------ PUBLIC FUNCTIONS ---------------------------------
 	// ---------------------------------------------------------------
 	
+	public synchronized void addAnswer(double[][] a, String id) {
+		int[] indices = inProgressJobs.get(id);
+		//Remember:
+		// [0] = aMatrixRowStart
+		// [1] = aMatrixRowEnd
+		// [2] = bMatrixColStart
+		// [3] = bMatrixEnd	
+		//Therefore matrix C answer will be the same row indices as matrix A
+		//the answer portion is always just 1 * row
+		
+		for(int i = 0; i < matrixSize; i++ ) {
+			int rowStart = indices[0];
+			answer[rowStart][i] = a[0][i];		
+		}
+		
+		inProgressJobs.remove(id);
+	}
 	
 	//will likely need more checks
 	public boolean jobIsFinished() {
@@ -60,7 +77,8 @@ public class NodeMaster extends Thread {
 	}
 	
 	
-	public NodeMaster(String opType, double[][] matrixA, double[][] matrixB, int id) throws IOException  {	
+	public NodeMaster(String opType, double[][] matrixA, double[][] matrixB, int id, Socket s) throws IOException  {	
+		socket = s;
 		masterID = id;
 		workersCount = WorkerInfo.getWorkerCount();
 		setUpJob(matrixA, matrixB, opType);
@@ -68,12 +86,25 @@ public class NodeMaster extends Thread {
 
 	
 	public void run()  {
-		System.out.println("Node Master - " + masterID + " sending work" );
-		sendWork();	
+		System.out.println("Node Master - " + masterID + " allocating work" );
+		allocateWork();	
 //		System.out.println("Answer: ");
 //		SimpleMatrix simpleMatrix = new SimpleMatrix(answer);
 //		simpleMatrix.print();
+		System.out.println("Node Master - " + masterID + " finished sending work" );
+		
+		//will wait until it's answer has been accessed and taken
+		waitForAnswerRetrieval();
 	}	
+	
+	public synchronized void waitForAnswerRetrieval() {
+		try {
+			wait();
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
 	
 
 	public double[][] getAnswer(){
@@ -94,7 +125,7 @@ public class NodeMaster extends Thread {
 	// should send all work of to nodes
 	// later improvements may have checking during this loop for any failures
 	// -----------------------------------------------------------------------
-	private void sendWork() {
+	private void allocateWork() {
 		switch (operationType) {
 		case "multiplication":
 				while(!jobQueue.isEmpty()) {
@@ -105,15 +136,18 @@ public class NodeMaster extends Thread {
 					double[][] matrixBCols = bMatrix;
 					//give a small task an ID and store the indices we used 
 					//in case we lose this data and to keep track of it's progress and then completion
-					inProgressJobs.put(createIdConcat(masterID, taskIDCount++), indices);
+					String id = createIdConcat(masterID, taskIDCount++);
+					inProgressJobs.put(id, indices);
 		
+					SendWork sendWork = new SendWork(2, matrixARows, matrixBCols, id);
+					
+					
+					sendToNode(sendWork);
+					taskIDCount++;
 					
 					//System.out.println("Local calc....");
-					testCalcMultiplication(matrixARows, matrixBCols, taskIDCount);
-					taskIDCount++;
-					//TODO:make call to a node to send 
-					//System.out.println("Node Socket communication not yet implemented");	
-				
+					//testCalcMultiplication(matrixARows, matrixBCols, taskIDCount);
+					
 			}		
 			break;
 		case "addition":
@@ -165,6 +199,29 @@ public class NodeMaster extends Thread {
 		}
 
 			
+	}
+	
+	private void sendToNode(SendWork s) {
+		
+		try {
+			so = new Socket("", 3000);
+		} catch (UnknownHostException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		} catch (IOException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}
+		ObjectOutputStream out;
+		try {
+			out = new ObjectOutputStream(so.getOutputStream());
+			out.writeObject(s);
+			//out.close();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
 	}
 	
 	

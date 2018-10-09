@@ -49,10 +49,12 @@ public class MatrixClient {
 
 			
 	public enum BinaryOperation{
-		ADD,
-		MUTIPLY,
-		SUBSTRACT,
-		STATUS	
+		ADD,  //1
+		MUTIPLY,  //2
+		SUBSTRACT, //3
+		STATUS, //4
+		RESULT, //5
+		PartialSum //6 - Use by the calcWOrkers for when the Node's send work
 	}
 	BinaryOperation operation;
 	//setup client with requested port

@@ -33,7 +33,7 @@ public class NodeCalcThread extends Thread  {
 	    private double[][] calcWork(SendWork s){
 			int rowLength = s.b[0].length;
 			double[][] answer;
-			switch (Integer.parseInt(s.id)) {
+			switch (s.op) {
 			case 1:
 				//Row + Row = row
 				answer = new double[1][rowLength];
@@ -46,10 +46,13 @@ public class NodeCalcThread extends Thread  {
 				//Mul a row of matrix a by all columns of Matrix B
 				//Returns a full row (The master will know the location of this row in the original matrix)
 				answer = new double[1][rowLength];
+				
 				for(int i = 0; i < rowLength; i++) {
+					double ans = 0;
 					for(int j = 0; j < rowLength; j++) {
-						answer[0][i] = s.a[0][i] * s.b[0][j];  
+						ans += s.a[0][j] * s.b[i][j];  
 					}
+					answer[0][i] = ans; 
 				}
 				break;
 			case 3:

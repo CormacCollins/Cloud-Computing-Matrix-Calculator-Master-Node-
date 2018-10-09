@@ -15,8 +15,8 @@ public class ReturnAnwersThread extends Thread  {
 
 		ObjectOutputStream out;	
 		Socket s;
-		WorkReturn wReturn;
-		public ReturnAnwersThread(Socket so, WorkReturn rtAnswer) {
+		SendWork wReturn;
+		public ReturnAnwersThread(Socket so, SendWork rtAnswer) {
 			s= so;
 			wReturn = rtAnswer;
 		}
@@ -25,7 +25,7 @@ public class ReturnAnwersThread extends Thread  {
 	    	SendWork(s, wReturn);
 	    }
 	    
-	    private void SendWork(Socket so, WorkReturn rtAnswer) {
+	    private void SendWork(Socket so, SendWork rtAnswer) {
 	    	
 			try {
 				out = new ObjectOutputStream(so.getOutputStream());

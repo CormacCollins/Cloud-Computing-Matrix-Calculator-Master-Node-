@@ -48,9 +48,16 @@ public class MatrixServer {
 	private static int size;
 	private static MatrixResult res;
 	private static String op;
+	
+	//need to keep track of used ports as the nodeMaster will be using ports on the same machine
+	private static int portCount;
 
 	// public static ArrayList<CalculationThread> threadList = new
 	// ArrayList<CalculationThread>();
+	
+	public int getAvailablePortNumer() {
+		return 1;
+	}
 
 	public static void main(String[] args) throws ClassNotFoundException {
 		
@@ -58,7 +65,8 @@ public class MatrixServer {
 
 		// TODO Auto-generated method stub
 		int port = 1024;
-		int socketPort = 1000;
+		ServerSocket serverSocket;
+		portCount = 1025;
 		int count = 0;
 		int workerCount = 1;
 		int[] socketList = new int[10000];
@@ -67,7 +75,7 @@ public class MatrixServer {
 
 		if (args.length == 2) {
 			try {
-				socketPort = Integer.parseInt(args[0]);
+				port = Integer.parseInt(args[0]);
 				workerCount = Integer.parseInt(args[1]);
 			} catch (Exception e) {
 			}
@@ -79,7 +87,7 @@ public class MatrixServer {
 		System.out.println("Matrix server is running on port " + port + "...");
 		// System.out.println("Requesting " + workerCount + " workers");
 		// create a server socket and wait for client's connection
-		ServerSocket serverSocket;
+
 		try {
 			serverSocket = new ServerSocket(port);
 			while (true) {
@@ -98,9 +106,18 @@ public class MatrixServer {
 				SendWork rec = (SendWork) in.readObject();
 
 				
-				System.out.println("Recieved request");
-				if (rec.op == 1 || rec.op == 2 || rec.op == 3) {
 
+				//if it is work being sent from a worker
+				//only have matrix a with answer 
+				//and the id string
+				if(rec.op ==6) {
+					System.out.println("Partial answer recieved");
+					String[] idStrings = rec.id.split(":");
+					NodeMaster nodeMaster = getNodeMasterByID(Integer.parseInt(idStrings[0]));
+					nodeMaster.addAnswer(rec.a, rec.id);
+				}				
+				else if (rec.op == 1 || rec.op == 2 || rec.op == 3) {
+					System.out.println("Recieved request");
 
 					System.out.println("Matrices recieved: ");
 						
@@ -119,7 +136,7 @@ public class MatrixServer {
 					System.out.println("Starting NodeManager on job id: " + key);
 					
 					//is added to the NodeMasterList - can be retrieved using requestToMasterNode(int id)
-					createAndRunNewNodeMaster(convertOperationTypeToString(rec.op), rec.a, rec.b, key);
+					createAndRunNewNodeMaster(convertOperationTypeToString(rec.op), rec.a, rec.b, key, socket);
 					
 					dos.writeUTF(Integer.toString(key));
 
@@ -131,6 +148,7 @@ public class MatrixServer {
 					if(nodeMasterIsFinished(jobId)) {
 						answer = getAnswer(jobId);
 						status = Status.successful_calculation;
+						
 					}
 					else {
 						answer = null;
@@ -181,10 +199,11 @@ public class MatrixServer {
 	// ----------------------------------------------------------------
 	// create new nodeMaster and get the unique Job id assigned to it
 	// ----------------------------------------------------------------
-	public static void createAndRunNewNodeMaster(String opType, double[][] matrixA, double[][] matrixB, int uniqueId) {
+	public static void createAndRunNewNodeMaster(String opType, double[][] matrixA, double[][] matrixB, 
+			int uniqueId, Socket s) {
 		NodeMaster nMaster;
 		try {
-			nMaster = new NodeMaster(opType, matrixA, matrixB, uniqueId);
+			nMaster = new NodeMaster(opType, matrixA, matrixB, uniqueId, s);
 		} catch (IOException e) {
 			nMaster = null;
 			System.out.println("Error constructing NodeMaster id: " + uniqueIdCount);
@@ -204,7 +223,10 @@ public class MatrixServer {
 	}
 
 	public static double[][] getAnswer(int id) {
-		return getNodeMasterByID(id).getAnswer();
+		NodeMaster nMaster = getNodeMasterByID(id);
+		double[][] ans = nMaster.getAnswer();
+		nMaster.notify();
+		return ans;
 	}
 
 	// ------------------------------------------------------
@@ -293,7 +315,7 @@ public class MatrixServer {
 
 			// double[][] arr2 = {{2,4}, {2,4}};
 
-			NodeMaster nMaster = new NodeMaster(operationType, arr, arr2, id);
+			NodeMaster nMaster = new NodeMaster(operationType, arr, arr2, id, socket);
 			nMaster.run(); // .start() for threading
 			boolean isCorrect = false;
 			SimpleMatrix calculatedAns = new SimpleMatrix(nMaster.getAnswer());

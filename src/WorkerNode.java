@@ -30,7 +30,7 @@ public class WorkerNode {
 		
 		
 		// TODO Auto-generated method stub
-		int port = 1024;
+		int port = 3000;
 		int socketPort = 1000;
 		int count = 0;
 		int workerCount = 1;
@@ -49,7 +49,7 @@ public class WorkerNode {
 		}
 		
 		
-		System.out.println("Matrix server is running on port " + port + "...");
+		System.out.println("Worker node is running on port " + port + "...");
 		//System.out.println("Requesting " + workerCount + " workers");
 		// create a server socket and wait for client's connection
 		ServerSocket serverSocket;
@@ -66,11 +66,14 @@ public class WorkerNode {
 				
 				Socket socket = serverSocket.accept();
 
-				//System.out.println("Socket number " + count + " open.");
-
+				//Once a socket is opened and the data object is read in
+				//it is added to a list of work which is constantly checked by a calculation thread
+				//a finished is sent also in a new thread to stop any calculation blocking
+				//this way the server constantly runs in available for connection to add new jobs
+				
 				ObjectInputStream in = new ObjectInputStream(socket.getInputStream());
 				SendWork rec = (SendWork) in.readObject();
-				String[] idStrings = rec.id.split(":");
+				//String[] idStrings = rec.id.split(":");
 				
 				WorkDetails workDetails = new WorkDetails(rec, socket);				
 				workerNode.workList.add(workDetails);
@@ -113,8 +116,8 @@ public class WorkerNode {
 		return getNextQueueJob();
 	}
 	
-	public void sendFinishedWork(double[][] ans, String id, Socket s) {
-		WorkReturn wReturn = new WorkReturn(ans, id);
+	public synchronized void sendFinishedWork(double[][] ans, String id, Socket s) {
+		SendWork wReturn = new SendWork(6, ans, ans, id);
 		ReturnAnwersThread returnAnwersThread = new ReturnAnwersThread(s, wReturn);
 		returnAnwersThread.start();
 	}
