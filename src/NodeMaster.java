@@ -1,11 +1,14 @@
 import java.util.Queue;
 import java.io.IOException;
+import java.io.ObjectOutputStream;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Map;
 
 import org.ejml.data.DMatrixRMaj;
 import org.ejml.simple.SimpleMatrix;
+
+import ejml.WorkerInfo;
 
 public class NodeMaster extends Thread {
 
@@ -15,6 +18,8 @@ public class NodeMaster extends Thread {
 	private int matrixSize;
 	private double[][] answer;
 	private int workersCount;
+	private int masterID;
+
 	
 	//general queue array structure:
 	// [0] = aMatrixRowStart
@@ -43,6 +48,7 @@ public class NodeMaster extends Thread {
 	// ------------ PUBLIC FUNCTIONS ---------------------------------
 	// ---------------------------------------------------------------
 	
+	
 	//will likely need more checks
 	public boolean jobIsFinished() {
 		return jobQueue.isEmpty() && inProgressJobs.isEmpty();
@@ -55,13 +61,15 @@ public class NodeMaster extends Thread {
 	}
 	
 	
-	public NodeMaster(String opType, double[][] matrixA, double[][] matrixB, int id, int currentWorkerAvailablity) throws IOException  {	
-		workersCount = currentWorkerAvailablity;
-		setUpJob(matrixA, matrixB, opType, id);
+	public NodeMaster(String opType, double[][] matrixA, double[][] matrixB, int id) throws IOException  {	
+		masterID = id;
+		workersCount = WorkerInfo.getWorkerCount();
+		setUpJob(matrixA, matrixB, opType);
 	}
 
 	
 	public void run()  {
+		System.out.println("Node Master - " + masterID + " sending work" );
 		sendWork();	
 //		System.out.println("Answer: ");
 //		SimpleMatrix simpleMatrix = new SimpleMatrix(answer);
@@ -225,7 +233,7 @@ public class NodeMaster extends Thread {
 		return lowestId;
 	}
 	
-	private void setUpJob(double[][] matrixA, double[][] matrixB, String opType, int id) {
+	private void setUpJob(double[][] matrixA, double[][] matrixB, String opType) {
 		
 		matrixSize = matrixA.length;
 		aMatrix = matrixA;

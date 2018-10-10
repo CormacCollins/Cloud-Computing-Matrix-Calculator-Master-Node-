@@ -137,45 +137,25 @@ public class MatrixClient {
 		}
 	}
 
+
 	// main function for send and recive 
 	public static void sendObject() throws IOException, ClassNotFoundException {
 		String id = null;
 		int matrixSize = 100;
 		String output;
-//		Scanner sc = new Scanner (System.in);
-//		System.out.println("input the opreation you want ");
-//		System.out.println("1 for add \n 2for multiply \n 3 for minus ");
-//		System.out.println("4 for check status \n 5 for get result");
-//		int op = 3;
+
+//		id = "1";
+//		CreateMatrix(5);
+//		SendWork send = new SendWork(3,a,b,id);		
+//		out = new ObjectOutputStream(socket.getOutputStream());
+//		dis = new DataInputStream(socket.getInputStream());
+//		in = new ObjectInputStream(socket.getInputStream());
+//		out.writeObject(send);
+//		System.out.println("Wrote object");
 //		
-//		if(op == 3) {
-//			System.out.println("do you want to input the matrix by hand?");
-//			boolean temp = sc.nextBoolean();
-//			System.out.println("inter the size of matrix you want");
-//			matrixSize = sc.nextInt();
-//			if(temp) {
-//				TypeMatrix(matrixSize,a);
-//				TypeMatrix(matrixSize,b);
-//			}else {
-//				 
-//				CreateMatrix(matrixSize);
-//			}
-//		}else if (op ==4 && op == 5) {
-//			System.out.println("enter the id");
-//			id = sc.nextLine();
-//		}
-		id = "1";
-		CreateMatrix(5);
-		SendWork send = new SendWork(3,a,b,id);		
-		out = new ObjectOutputStream(socket.getOutputStream());
-		dis = new DataInputStream(socket.getInputStream());
-		in = new ObjectInputStream(socket.getInputStream());
-		out.writeObject(send);
-		System.out.println("Wrote object");
-		
-		res = (MatrixResult) in.readObject();
-		print_2D(res.answer);
-		
+//		res = (MatrixResult) in.readObject();
+//		print_2D(res.answer);
+//		
 //			output = dis.readUTF();
 //			System.out.println("this is your work id, plz keep it"+output);
 		
@@ -198,9 +178,9 @@ public class MatrixClient {
 			}
 		}else if (op ==4 || op == 5) {
 			System.out.println("enter the id");
-			id = sc.nextLine();
+			id = Integer.toString(sc.nextInt());
 		}
-		send = new SendWork(op,a,b,id);
+		SendWork send = new SendWork(op,a,b,id);
 		System.out.println("send created");
 		ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream());
 		System.out.println("a");
@@ -209,11 +189,20 @@ public class MatrixClient {
 		
 		out.writeObject(send);
 		System.out.println("send finished");
-		if(op == 5) {
+		if(op == 4 || op == 5) {
 			ObjectInputStream in = new ObjectInputStream(socket.getInputStream());
-			res = (MatrixResult) in.readObject();
-			print_2D(res.answer);
+			MatrixResult res = (MatrixResult) in.readObject();
+			
+			if(res.stat == Status.not_finished) {
+				System.out.println("Job not finished yet - please check later");
+				
+			}
+			else if(res.stat == Status.successful_calculation) {
+				print_2D(res.answer);
+			}
+			
 			in.close();
+			
 		}else {
 			DataInputStream dis = new DataInputStream(socket.getInputStream());
 			output = dis.readUTF();

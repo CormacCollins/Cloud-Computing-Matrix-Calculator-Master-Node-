@@ -23,6 +23,9 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
 
+import javax.management.Descriptor;
+import javax.print.attribute.standard.RequestingUserName;
+
 import org.ejml.dense.row.RandomMatrices_DDRM;
 import org.ejml.simple.SimpleMatrix;
 import org.omg.CORBA.PRIVATE_MEMBER;
@@ -30,11 +33,16 @@ import org.omg.CORBA.PRIVATE_MEMBER;
 import java.time.*;
 
 public class MatrixServer {
+
+	public enum BinaryOperation {
+		ADD, MUTIPLY, SUBSTRACT, STATUS
+	}
+
 	protected Socket socket;
 	// unique id that's incremented for each use
 	static int uniqueIdCount = 0;
 	// unique look up hash for all worker nodeMasters
-	private Map<Integer, NodeMaster> nodeMasterList = new HashMap<Integer, NodeMaster>();
+	private static Map<Integer, NodeMaster> nodeMasterList = new HashMap<Integer, NodeMaster>();
 	private static DataInputStream dis = null;
 
 	private static int size;
@@ -45,6 +53,8 @@ public class MatrixServer {
 	// ArrayList<CalculationThread>();
 
 	public static void main(String[] args) throws ClassNotFoundException {
+		
+		
 
 		// TODO Auto-generated method stub
 		int port = 1024;
@@ -87,29 +97,52 @@ public class MatrixServer {
 				ObjectInputStream in = new ObjectInputStream(socket.getInputStream());
 				SendWork rec = (SendWork) in.readObject();
 
-				if (true) {
-					System.out.println("Recieved Work");
+				
+				System.out.println("Recieved request");
+				if (rec.op == 1 || rec.op == 2 || rec.op == 3) {
 
-					System.out.println("received");
-					if (rec.op == 1 || rec.op == 2 || rec.op == 3) {
-						DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
 
-						String key = LocalDate.now().toString() + LocalTime.now().toString();
+					System.out.println("Matrices recieved: ");
+						
+					SimpleMatrix aMatrix = new SimpleMatrix(rec.a);
+					SimpleMatrix bMatrix = new SimpleMatrix(rec.b);
+					aMatrix.print();
+					bMatrix.print();
+					
+					
+					
+					DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
 
-						dos.writeUTF(key);
+					int key = uniqueIdCount++;
+					
 
-					} else {
-						DataInputStream dis = new DataInputStream(socket.getInputStream());
-						id = dis.readUTF();
-						if (rec.op == 5) {
-							// use the id to find the result
-							ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream());
-							out.writeObject(res);
-						} else {
-							// use the id to get the info
-						}
+					System.out.println("Starting NodeManager on job id: " + key);
+					
+					//is added to the NodeMasterList - can be retrieved using requestToMasterNode(int id)
+					createAndRunNewNodeMaster(convertOperationTypeToString(rec.op), rec.a, rec.b, key);
+					
+					dos.writeUTF(Integer.toString(key));
+
+				} else if (rec.op == 5 || rec.op == 4) {
+					double[][] answer;
+					Status status;
+					int jobId = Integer.parseInt(rec.id);
+					// use the id to find the result
+					if(nodeMasterIsFinished(jobId)) {
+						answer = getAnswer(jobId);
+						status = Status.successful_calculation;
 					}
-				}
+					else {
+						answer = null;
+						status = Status.not_finished;
+					}
+					MatrixResult res = new MatrixResult(answer, status);
+					
+					
+					ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream());
+					out.writeObject(res);
+				} 
+			
 
 				// will run random tests on mul add and subtraction
 				// matrixServer.fullCalculationTest();
@@ -117,11 +150,14 @@ public class MatrixServer {
 				count++;
 
 			}
-		} catch (IOException e) {
-			// Server failed
-			e.printStackTrace();
+		}catch(
 
-		}
+	IOException e)
+	{
+		// Server failed
+		e.printStackTrace();
+
+	}
 
 	}
 
@@ -129,14 +165,26 @@ public class MatrixServer {
 		this.socket = socket;
 	}
 
+	public static String convertOperationTypeToString(int op) {
+		switch (op) {
+		case 1:
+			return "addition";
+		case 2:
+			return "multiplication";
+		case 3:
+			return "subtraction";
+		default:
+			return null;
+		}
+	}
+
 	// ----------------------------------------------------------------
 	// create new nodeMaster and get the unique Job id assigned to it
 	// ----------------------------------------------------------------
-	private int createNewNodeMaster(String opType, double[][] matrixA, double[][] matrixB,
-			int currentWorkerAvailablity) {
+	public static void createAndRunNewNodeMaster(String opType, double[][] matrixA, double[][] matrixB, int uniqueId) {
 		NodeMaster nMaster;
 		try {
-			nMaster = new NodeMaster("multiplication", matrixA, matrixB, uniqueIdCount, 5);
+			nMaster = new NodeMaster(opType, matrixA, matrixB, uniqueId);
 		} catch (IOException e) {
 			nMaster = null;
 			System.out.println("Error constructing NodeMaster id: " + uniqueIdCount);
@@ -144,21 +192,25 @@ public class MatrixServer {
 			e.printStackTrace();
 		}
 
-		nodeMasterList.put(uniqueIdCount, nMaster);
-		return uniqueIdCount++;
+		nMaster.start();
+		nodeMasterList.put(uniqueId, nMaster);
 	}
 
 	// TODO: May need the req and or answer to be parsed more before returning to
 	// server
 	// request sent and: answer / info / outcome is returned
-	private String requestToMasterNode(int id, String request) {
-		return getNodeMasterByID(id).makeRequest(request);
+	public static boolean nodeMasterIsFinished(int id) {
+		return getNodeMasterByID(id).jobIsFinished();
+	}
+
+	public static double[][] getAnswer(int id) {
+		return getNodeMasterByID(id).getAnswer();
 	}
 
 	// ------------------------------------------------------
 	// get the reference to master working on particular job
 	// ------------------------------------------------------
-	private NodeMaster getNodeMasterByID(int id) {
+	private static NodeMaster getNodeMasterByID(int id) {
 		return nodeMasterList.get(id);
 	}
 
@@ -192,7 +244,6 @@ public class MatrixServer {
 	// Wrapper for testing function to test full range
 	// ------------------------------------------------
 
-
 	public void fullCalculationTest() throws IOException {
 
 		System.out.println("Testing for worker count 1");
@@ -224,51 +275,49 @@ public class MatrixServer {
 		int id = 0;
 		int testCount = 100;
 		boolean allAreTrue = true;
-		for(int i = 0; i < testCount; i++) {
-			
+		for (int i = 0; i < testCount; i++) {
+
 			Random rand = new Random();
-			SimpleMatrix A = SimpleMatrix.random_DDRM(20,20,-10,10,rand);
-			SimpleMatrix B = SimpleMatrix.random_DDRM(20,20,-10,10,rand);
-			
+			SimpleMatrix A = SimpleMatrix.random_DDRM(20, 20, -10, 10, rand);
+			SimpleMatrix B = SimpleMatrix.random_DDRM(20, 20, -10, 10, rand);
+
 			double[][] arr = new double[A.numRows()][A.numCols()];
-			for(int k = 0; k < A.numCols(); k++) {
-				arr[k]= A.rows(k, k+1).getDDRM().getData();
-			}
-			
-			double[][] arr2 = new double[A.numRows()][A.numCols()];
-			for(int k = 0; k < A.numCols(); k++) {
-				arr2[k]= B.rows(k, k+1).getDDRM().getData();
+			for (int k = 0; k < A.numCols(); k++) {
+				arr[k] = A.rows(k, k + 1).getDDRM().getData();
 			}
 
-			
-			//double[][] arr2 = {{2,4}, {2,4}};
-			
-		
-			NodeMaster nMaster = new NodeMaster(operationType, arr ,arr2, id, workers);
-			nMaster.run();   //.start() for threading
+			double[][] arr2 = new double[A.numRows()][A.numCols()];
+			for (int k = 0; k < A.numCols(); k++) {
+				arr2[k] = B.rows(k, k + 1).getDDRM().getData();
+			}
+
+			// double[][] arr2 = {{2,4}, {2,4}};
+
+			NodeMaster nMaster = new NodeMaster(operationType, arr, arr2, id);
+			nMaster.run(); // .start() for threading
 			boolean isCorrect = false;
 			SimpleMatrix calculatedAns = new SimpleMatrix(nMaster.getAnswer());
 			switch (operationType) {
 			case "multiplication":
 				SimpleMatrix answer = A.mult(B);
-				isCorrect = (answer).isIdentical(calculatedAns, 1);				
+				isCorrect = (answer).isIdentical(calculatedAns, 1);
 				break;
 
 			case "addition":
-				isCorrect = (A.plus(B)).isIdentical(calculatedAns, 1);	
+				isCorrect = (A.plus(B)).isIdentical(calculatedAns, 1);
 				break;
 			case "subtraction":
-				isCorrect = (A.minus(B)).isIdentical(calculatedAns, 1);	
+				isCorrect = (A.minus(B)).isIdentical(calculatedAns, 1);
 			default:
 				break;
 			}
-			
-			if(!isCorrect) {
+
+			if (!isCorrect) {
 				allAreTrue = false;
 			}
-			
-			//System.out.println("Calculation " + count + ": " + isCorrect);	
+
+			// System.out.println("Calculation " + count + ": " + isCorrect);
 		}
-		System.out.println("All " + operationType + " calculations correct = " + allAreTrue);	
+		System.out.println("All " + operationType + " calculations correct = " + allAreTrue);
 	}
 }
