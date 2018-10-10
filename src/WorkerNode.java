@@ -20,7 +20,7 @@ public class WorkerNode {
 	protected Socket socket;
 	
 	int workIdIncrementor = 0;
-	private Queue<WorkDetails> workList = new LinkedList<WorkDetails>();
+	private Queue<SendWork> workList = new LinkedList<SendWork>();
 	int[] workCompleted;
 
 	
@@ -34,11 +34,9 @@ public class WorkerNode {
 		int socketPort = 1000;
 		int count = 0;
 		int workerCount = 1;
-		int []socketList = new int[10000];
-		int socketIndex = 0;
-		if (args.length == 2) {
+		if (args.length >= 2) {
 			try {
-				socketPort = Integer.parseInt(args[0]);
+				port = Integer.parseInt(args[0]);
 				workerCount = Integer.parseInt(args[1]);
 			}
 			catch(Exception e){
@@ -66,17 +64,14 @@ public class WorkerNode {
 				
 				Socket socket = serverSocket.accept();
 
-				//Once a socket is opened and the data object is read in
-				//it is added to a list of work which is constantly checked by a calculation thread
-				//a finished is sent also in a new thread to stop any calculation blocking
-				//this way the server constantly runs in available for connection to add new jobs
+				//Data is given to the calc thread, which will then pass it on to a sending thread afterwards
+				//the sending thread will use a socket to go straight back to the original server
+				//which will pass the info to the correct NodeMaster
 				
 				ObjectInputStream in = new ObjectInputStream(socket.getInputStream());
 				SendWork rec = (SendWork) in.readObject();
-				//String[] idStrings = rec.id.split(":");
-				
-				WorkDetails workDetails = new WorkDetails(rec, socket);				
-				workerNode.workList.add(workDetails);
+					
+				workerNode.workList.add(rec);
 				
 			}
 		} catch (IOException | ClassNotFoundException e) {
@@ -101,9 +96,9 @@ public class WorkerNode {
 //		}
 //	}
 	
-	public synchronized WorkDetails getNextQueueJob() {
+	public synchronized SendWork getNextQueueJob() {
 		if(!workList.isEmpty()) {
-			WorkDetails w = workList.peek();
+			SendWork w = workList.peek();
 			workList.remove();
 			return w;
 		}
@@ -112,14 +107,14 @@ public class WorkerNode {
 		}
 	}
 	
-	public WorkDetails fetchWork() {
+	public SendWork fetchWork() {
 		return getNextQueueJob();
 	}
 	
-	public synchronized void sendFinishedWork(double[][] ans, String id, Socket s) {
+	public synchronized void sendFinishedWork(double[][] ans, String id) {
 		SendWork wReturn = new SendWork(6, ans, ans, id);
-		ReturnAnwersThread returnAnwersThread = new ReturnAnwersThread(s, wReturn);
-		returnAnwersThread.start();
+		ReturnAnwersThread returnAnwersThread = new ReturnAnwersThread(wReturn);
+		returnAnwersThread.run();
 	}
 	
 

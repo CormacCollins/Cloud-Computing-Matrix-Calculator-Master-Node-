@@ -1,4 +1,5 @@
 
+import java.awt.RenderingHints.Key;
 import java.io.DataInputStream;
 
 import java.io.DataOutputStream;
@@ -44,7 +45,9 @@ public class MatrixServer {
 	// unique look up hash for all worker nodeMasters
 	private static Map<Integer, NodeMaster> nodeMasterList = new HashMap<Integer, NodeMaster>();
 	private static DataInputStream dis = null;
-
+	boolean isTesting = false;
+	boolean testingComplete = false;
+	
 	private static int size;
 	private static MatrixResult res;
 	private static String op;
@@ -61,8 +64,7 @@ public class MatrixServer {
 
 	public static void main(String[] args) throws ClassNotFoundException {
 		
-		
-
+		Map<Integer, SimpleMatrix> testAnswers = new HashMap<Integer, SimpleMatrix>();
 		// TODO Auto-generated method stub
 		int port = 1024;
 		ServerSocket serverSocket;
@@ -88,6 +90,13 @@ public class MatrixServer {
 		// System.out.println("Requesting " + workerCount + " workers");
 		// create a server socket and wait for client's connection
 
+		//SetupNode info - in the real world we would have this info somewhere else
+		WorkerInfo workerInfo = new WorkerInfo();
+		int nodeId = 0;
+		workerInfo.addNodeDetails(0, 3000, nodeId++);
+		workerInfo.addNodeDetails(0,  3001, nodeId++);
+		
+		
 		try {
 			serverSocket = new ServerSocket(port);
 			while (true) {
@@ -105,15 +114,43 @@ public class MatrixServer {
 				ObjectInputStream in = new ObjectInputStream(socket.getInputStream());
 				SendWork rec = (SendWork) in.readObject();
 
+				if(rec.op == 7) {	
+						testAnswers = matrixServer.fullCalculationTest();
+						int key = uniqueIdCount++;
+						DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
+						dos.writeUTF(Integer.toString(key));
+					
+				}
+				else if(rec.op == 8) {
+					System.out.println("Completed jobs:");
+					for(int i = 0; i < nodeMasterList.size(); i++) {
+						NodeMaster nMaster = getNodeMasterByID(i);
+						if(nMaster.jobIsFinished()) {
+							SimpleMatrix matrixAns = new SimpleMatrix(nMaster.getAnswer());
+							SimpleMatrix testAns = testAnswers.get(i);
+							System.out.println("Correct ans");
+							testAns.print();
+							boolean res = testAns.isIdentical(matrixAns, 1);
+							String c = res ? "passed" : "failed";
+							System.out.println("NodeMaster " + i + " answer " + c);
+							System.out.println("Server answer");
+							matrixAns.print();
+						}
+						else {
+							System.out.println("NodeMaster " + i + " not finished job yet");
+						}
+						
+					}
 				
-
+				}
 				//if it is work being sent from a worker
 				//only have matrix a with answer 
 				//and the id string
-				if(rec.op ==6) {
+				else if(rec.op ==6) {
 					System.out.println("Partial answer recieved");
 					String[] idStrings = rec.id.split(":");
 					NodeMaster nodeMaster = getNodeMasterByID(Integer.parseInt(idStrings[0]));
+					System.out.println("Writing to nodeMaster id: " + idStrings[0]);
 					nodeMaster.addAnswer(rec.a, rec.id);
 				}				
 				else if (rec.op == 1 || rec.op == 2 || rec.op == 3) {
@@ -127,6 +164,22 @@ public class MatrixServer {
 					bMatrix.print();
 					
 					
+					switch (rec.op) {
+					case 1:
+						System.out.println("Actual answer:");
+						aMatrix.plus(bMatrix).print();
+						break;
+					case 2:
+						System.out.println("Actual answer:");
+						aMatrix.mult(bMatrix).print();
+						break;
+					case 3:
+						System.out.println("Actual answer:");
+						aMatrix.minus(bMatrix).print();
+					default:
+						break;
+					}
+					
 					
 					DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
 
@@ -136,7 +189,7 @@ public class MatrixServer {
 					System.out.println("Starting NodeManager on job id: " + key);
 					
 					//is added to the NodeMasterList - can be retrieved using requestToMasterNode(int id)
-					createAndRunNewNodeMaster(convertOperationTypeToString(rec.op), rec.a, rec.b, key, socket);
+					createAndRunNewNodeMaster(convertOperationTypeToString(rec.op), rec.a, rec.b, key, socket, workerInfo);
 					
 					dos.writeUTF(Integer.toString(key));
 
@@ -178,6 +231,7 @@ public class MatrixServer {
 	}
 
 	}
+		
 
 	public void setSocket(Socket socket) {
 		this.socket = socket;
@@ -225,7 +279,7 @@ public class MatrixServer {
 	public static double[][] getAnswer(int id) {
 		NodeMaster nMaster = getNodeMasterByID(id);
 		double[][] ans = nMaster.getAnswer();
-		nMaster.notify();
+		//nMaster.notify();
 		return ans;
 	}
 
@@ -236,72 +290,68 @@ public class MatrixServer {
 		return nodeMasterList.get(id);
 	}
 
-//	public void execute() {
-//		try {
-//			BufferedReader reader = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-//			// read the message from client and parse the execution
-//			String line = reader.readLine();
-//
-//			// write the result back to the client
-//			BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(socket.getOutputStream()));
-//
-//			// ---- WRITE BACK OUTPUT ---- //
-//
-//			writer.write("Recieved: " + line + "Giving back the result....");
-//			writer.newLine();
-//			writer.write("Here is the result");
-////			writer.write(""+result);
-//			writer.newLine();
-//			writer.flush();
-//
-//			// close the stream
-//			reader.close();
-//			writer.close();
-//		} catch (Exception e) {
-//			e.printStackTrace();
-//		}
-//	}
-
 	// -------------------------------------------------
 	// Wrapper for testing function to test full range
 	// ------------------------------------------------
 
-	public void fullCalculationTest() throws IOException {
+	public Map<Integer, SimpleMatrix> fullCalculationTest() throws IOException {
 
-		System.out.println("Testing for worker count 1");
-		testFunc("multiplication", 1);
-		testFunc("addition", 1);
-		testFunc("subtraction", 1);
+		isTesting = true;
+		int id = 0;
+		Map<Integer, SimpleMatrix> testAnswers = new HashMap<Integer, SimpleMatrix>();
+//		System.out.println("Testing for worker count 1");
+//		for(int i = 7; i < 8; i++) {
+		
+		Map.Entry<Integer, SimpleMatrix> val1 = testFunc("multiplication", 1, id++, 8);
+		testAnswers.put(val1.getKey(), val1.getValue());
+		Map.Entry<Integer, SimpleMatrix> val1a = testFunc("multiplication", 1, id++, 9);
+		testAnswers.put(val1a.getKey(), val1a.getValue());
+		Map.Entry<Integer, SimpleMatrix> val1b = testFunc("multiplication", 1, id++, 9);
+		testAnswers.put(val1b.getKey(), val1b.getValue());
+		
+		
+		Map.Entry<Integer, SimpleMatrix> val2 = testFunc("addition", 1, id++ , 8);
+		testAnswers.put(val2.getKey(), val2.getValue());
+		Map.Entry<Integer, SimpleMatrix> val3 = testFunc("subtraction", 1, id++, 8);
+		testAnswers.put(val3.getKey(), val3.getValue());
+//		
+//		
+//		}
+			//
+//		System.out.println("Testing for worker count 4");
+//		testFunc("multiplication", 4);
+//		testFunc("addition", 4);
+//		testFunc("subtraction", 4);
 
-		System.out.println("Testing for worker count 4");
-		testFunc("multiplication", 4);
-		testFunc("addition", 4);
-		testFunc("subtraction", 4);
-
-		System.out.println("Testing for worker count 10");
-		testFunc("multiplication", 10);
-		testFunc("addition", 10);
-		testFunc("subtraction", 10);
-
-		System.out.println("Testing for worker count 100");
-		testFunc("multiplication", 100);
-		testFunc("addition", 100);
-		testFunc("subtraction", 100);
+//		System.out.println("Testing for worker count 10");
+//		testFunc("multiplication", 10);
+//		testFunc("addition", 10);
+//		testFunc("subtraction", 10);
+//
+//		System.out.println("Testing for worker count 100");
+//		testFunc("multiplication", 100);
+//		testFunc("addition", 100);
+//		testFunc("subtraction", 100);
+		
+		System.out.println("Test allocation complete");
+		return testAnswers;
 	}
 
 	// ------------------------------------------------------------
 	// Will test matrix operations with large variets of matrix size
 	// THis is to maintain correctness throughout production
 	// -------------------------------------------------------------
-	public void testFunc(String operationType, int workers) throws IOException {
-		int id = 0;
-		int testCount = 100;
+	public Map.Entry<Integer, SimpleMatrix> testFunc(String operationType, int workers, int id, int size) throws IOException {
+
+		int testCount = 2;
 		boolean allAreTrue = true;
-		for (int i = 0; i < testCount; i++) {
 
 			Random rand = new Random();
-			SimpleMatrix A = SimpleMatrix.random_DDRM(20, 20, -10, 10, rand);
-			SimpleMatrix B = SimpleMatrix.random_DDRM(20, 20, -10, 10, rand);
+			SimpleMatrix A = SimpleMatrix.random_DDRM(size, size, -10, 10, rand);
+			SimpleMatrix B = SimpleMatrix.random_DDRM(size, size, -10, 10, rand);
+			
+			
+			
 
 			double[][] arr = new double[A.numRows()][A.numCols()];
 			for (int k = 0; k < A.numCols(); k++) {
@@ -314,32 +364,31 @@ public class MatrixServer {
 			}
 
 			// double[][] arr2 = {{2,4}, {2,4}};
-
-			NodeMaster nMaster = new NodeMaster(operationType, arr, arr2, id, socket);
-			nMaster.run(); // .start() for threading
-			boolean isCorrect = false;
-			SimpleMatrix calculatedAns = new SimpleMatrix(nMaster.getAnswer());
+			createAndRunNewNodeMaster(operationType, arr, arr2, id, socket, WorkerInfo);
+			SimpleMatrix answer = null;
 			switch (operationType) {
 			case "multiplication":
-				SimpleMatrix answer = A.mult(B);
-				isCorrect = (answer).isIdentical(calculatedAns, 1);
+				answer = A.mult(B);
 				break;
 
 			case "addition":
-				isCorrect = (A.plus(B)).isIdentical(calculatedAns, 1);
+				answer = A.plus(B);
 				break;
 			case "subtraction":
-				isCorrect = (A.minus(B)).isIdentical(calculatedAns, 1);
-			default:
+				answer = A.minus(B);
 				break;
 			}
 
-			if (!isCorrect) {
-				allAreTrue = false;
-			}
+			return new java.util.AbstractMap.SimpleEntry<Integer,SimpleMatrix>(id,answer);
 
 			// System.out.println("Calculation " + count + ": " + isCorrect);
-		}
-		System.out.println("All " + operationType + " calculations correct = " + allAreTrue);
+
+//		System.out.println("Sleeping while calculating...");
+//		try {
+//			Thread.sleep(10000);
+//		} catch (InterruptedException e) {
+//			// TODO Auto-generated catch block
+//			e.printStackTrace();
+//		}
 	}
 }

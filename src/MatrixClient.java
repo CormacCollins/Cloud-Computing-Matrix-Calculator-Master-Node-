@@ -54,7 +54,9 @@ public class MatrixClient {
 		SUBSTRACT, //3
 		STATUS, //4
 		RESULT, //5
-		PartialSum //6 - Use by the calcWOrkers for when the Node's send work
+		PartialSum, //6 - Use by the calcWOrkers for when the Node's send work
+		Testing, //7
+		GetTestResults //8
 	}
 	BinaryOperation operation;
 	//setup client with requested port
@@ -137,6 +139,7 @@ public class MatrixClient {
 				a[i][j]= Double.parseDouble(cell[j]);
 			}
 		}
+		sc.close();
 	}
 
 
@@ -178,7 +181,7 @@ public class MatrixClient {
 				 
 				CreateMatrix(matrixSize);
 			}
-		}else if (op ==4 || op == 5) {
+		}else if (op ==4 || op == 5 || op == 8) {
 			System.out.println("enter the id");
 			id = Integer.toString(sc.nextInt());
 		}
@@ -213,6 +216,7 @@ public class MatrixClient {
 		}
 		out.close();
 		socket.close();
+		sc.close();
 		
 	}
 
@@ -220,7 +224,6 @@ public class MatrixClient {
 		
 		String hostname = "localhost";
 		int port = 1024;
-		
 		
 
 		if (args.length != 3) {

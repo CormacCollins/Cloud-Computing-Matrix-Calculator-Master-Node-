@@ -3,7 +3,6 @@ import java.net.Socket;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.ejml.simple.SimpleMatrix;
 
 public class NodeCalcThread extends Thread  {
 
@@ -14,32 +13,43 @@ public class NodeCalcThread extends Thread  {
 		}
 	   
 	    
-		//will permenantly loop through jobs calculating and sending them to a 'send thread'
+		//will permanently loop through jobs calculating and sending them to a 'send thread'
 	    public void run() {	
 	    	while(true) {
-		    	WorkDetails w = nextJob();
+	    		SendWork w = nextJob();
 		    	if(w != null) {
-			    	double[][] ans = calcWork(w.work);
-			    	wNode.sendFinishedWork(ans, w.work.id, w.socket);
+			    	double[][] ans = calcWork(w);
+			    	wNode.sendFinishedWork(ans, w.id);
 		    	}
 	    	}
 	    	
 	    }
 	    
-	    public WorkDetails nextJob() {
+	    public SendWork nextJob() {
 	    	return wNode.fetchWork();
 	    }
 
 	    private double[][] calcWork(SendWork s){
 			int rowLength = s.b[0].length;
+			//int heightLength = s.b.length;
 			double[][] answer;
 			switch (s.op) {
 			case 1:
+				//System.out.println("Calculating a = ");
+				//SimpleMatrix aMatrix = new SimpleMatrix(s.a);
+				//aMatrix.print();
+				//System.out.println("Calculating b = ");
+				//SimpleMatrix bMatrix = new SimpleMatrix(s.b);
+				//bMatrix.print();
 				//Row + Row = row
 				answer = new double[1][rowLength];
 				for(int i = 0; i < rowLength; i++) {
 					answer[0][i] = s.a[0][i] + s.b[0][i];  
 				}
+				
+				
+				//System.out.println( aMatrix.plus(bMatrix).isIdentical(new SimpleMatrix(answer), 1));
+				
 				break;
 						
 			case 2:
@@ -47,10 +57,19 @@ public class NodeCalcThread extends Thread  {
 				//Returns a full row (The master will know the location of this row in the original matrix)
 				answer = new double[1][rowLength];
 				
+//				System.out.println("Calculating a = ");
+//				SimpleMatrix a1Matrix = new SimpleMatrix(s.a);
+//				a1Matrix.print();
+//				System.out.println("Calculating b = ");
+//				SimpleMatrix b1Matrix = new SimpleMatrix(s.b);
+//				b1Matrix.print();
+				
+				System.out.println("Row length: " +  rowLength);
 				for(int i = 0; i < rowLength; i++) {
 					double ans = 0;
 					for(int j = 0; j < rowLength; j++) {
-						ans += s.a[0][j] * s.b[i][j];  
+						//System.out.println("i = " + i + ", j = " + j);
+						ans += s.a[0][j] * s.b[j][i];  
 					}
 					answer[0][i] = ans; 
 				}
