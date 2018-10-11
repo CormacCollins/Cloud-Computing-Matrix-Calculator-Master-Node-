@@ -209,8 +209,11 @@ public class NodeMaster extends Thread {
 	
 	private void sendToNode(SendWork s) {
 		
+		
+		
+		
 		try {
-			so = new Socket("", 3000);
+			so = new Socket("104.215.191.245", 3000);
 		} catch (UnknownHostException e1) {
 			// TODO Auto-generated catch block
 			e1.printStackTrace();

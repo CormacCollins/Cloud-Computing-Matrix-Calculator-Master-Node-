@@ -254,10 +254,11 @@ public class MatrixServer {
 	// create new nodeMaster and get the unique Job id assigned to it
 	// ----------------------------------------------------------------
 	public static void createAndRunNewNodeMaster(String opType, double[][] matrixA, double[][] matrixB, 
-			int uniqueId, Socket s) {
+			int uniqueId, Socket s, WorkerInfo wInfo) {
 		NodeMaster nMaster;
 		try {
-			nMaster = new NodeMaster(opType, matrixA, matrixB, uniqueId, s);
+			nMaster = new NodeMaster(opType, matrixA, matrixB, uniqueId, s, WorkerInfo.getWorkerCount()); 
+			
 		} catch (IOException e) {
 			nMaster = null;
 			System.out.println("Error constructing NodeMaster id: " + uniqueIdCount);
@@ -364,7 +365,7 @@ public class MatrixServer {
 			}
 
 			// double[][] arr2 = {{2,4}, {2,4}};
-			createAndRunNewNodeMaster(operationType, arr, arr2, id, socket, WorkerInfo);
+			//createAndRunNewNodeMaster(operationType, arr, arr2, id, socket, WorkerInfo);
 			SimpleMatrix answer = null;
 			switch (operationType) {
 			case "multiplication":

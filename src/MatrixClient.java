@@ -222,21 +222,23 @@ public class MatrixClient {
 
 	public static void main(String[] args) {
 		
-		String hostname = "localhost";
+		String hostname = "137.116.128.225";
 		int port = 1024;
+		System.out.println("Using host/IP: " + hostname + " port: " + port);
 		
 
-		if (args.length != 3) {
-			System.out.println("Use the default setting...");
-		} 
-		else {
-			//use cmd line args
-			hostname = args[0];
-			port = Integer.parseInt(args[1]);
-//			String s = args[3];
-//			System.out.println("Process " + s);
-			
-		}
+//		if (args.length != 2) {
+//			System.out.println("Use the default setting...");
+//		} 
+//		else {
+//			//use cmd line args
+//			hostname = args[0];
+//			port = Integer.parseInt(args[1]);
+//			System.out.println("Using host/IP: " + hostname + " port: " + port);
+////			String s = args[3];
+////			System.out.println("Process " + s);
+//			
+//		}
 
 		String rowCol = "row_column";
 		MatrixClient client = new MatrixClient(hostname, port);
