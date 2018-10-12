@@ -1,154 +1,200 @@
 import java.util.Queue;
-import java.io.Console;
 import java.io.IOException;
-import java.security.KeyStore.Entry;
+import java.io.ObjectOutputStream;
+import java.net.Socket;
+import java.net.UnknownHostException;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Map;
 
 import org.ejml.data.DMatrixRMaj;
 import org.ejml.simple.SimpleMatrix;
-import org.omg.CORBA.PRIVATE_MEMBER;
 
 public class NodeMaster extends Thread {
-	
-	//Socket information
-	private int jobId;
+
 	private String operationType;
 	private static double[][] aMatrix;
 	private static double[][] bMatrix;	
-	private static double[][] result;
-	private int workersCount;
 	private int matrixSize;
-	
-
 	private double[][] answer;
-	private boolean isFinished = false;
-	
-	//general queue array structure:
+	private int workersCount;
 	// [0] = aMatrixRowStart
 	// [1] = aMatrixRowEnd
 	// [2] = bMatrixColStart
 	// [3] = bMatrixEnd	
 	private Queue<int[]> jobQueue;
-	
+	private int masterID;
+	private Socket socket;
+	Socket so;
 	//added data structure for cloud comp version
-	int taskIDCount = 0;
-	Map<Integer, int[]> inProgressJobs = new HashMap<Integer, int[]>();
+	// -------------------------------------------
+	
+	
+	// for number of tasks that make up a job
+	private int taskIDCount = 0;
 
-	Map<Integer, Double[][]> bRows;
+	//String represents the id for a piece of work
+	// this is a concatonatino of the Master ID + ":" + workID
+
+	Map<String, Integer[]> workerJobMap = new HashMap<String, Integer[]>();
+	Map<String, int[]> inProgressJobs = new HashMap<String, int[]>();
+	private boolean workHasBeenAllocated = false;
 	
-	//private static Job currentJob;
-	
-	//id for each worker and his jobId's
-	int uniqueIDIncrementorForWOrkers = 0;
-	Map<Integer, Integer[]> WorkerJobMap = new HashMap<Integer, Integer[]>();
-	
+	//arbitrary peak for load balancing - to be changeds
 	int PEAK_LOAD = 100;
-  
-	
-	private boolean isDEBUGGING = false;
 	
 	
 	// ---------------------------------------------------------------
 	// ------------ PUBLIC FUNCTIONS ---------------------------------
 	// ---------------------------------------------------------------
 	
+	public synchronized void addAnswer(double[][] a, String id) {
+		System.out.println("Adding work id: " + id);
+		int[] indices = inProgressJobsAccess().get(id);
+		
+		if(indices == null) {
+			System.out.println("Answer for work " + id + " already added");
+			return;
+		}
+		
+		//Remember:
+		// [0] = aMatrixRowStart
+		// [1] = aMatrixRowEnd
+		// [2] = bMatrixColStart
+		// [3] = bMatrixEnd	
+		//Therefore matrix C answer will be the same row indices as matrix A
+		//the answer portion is always just 1 * row
+		
+		try {
+			for(int i = 0; i < matrixSize; i++ ) {
+				int rowStart = indices[0];
+				answer[rowStart][i] = a[0][i];		
+			}
+			
+			inProgressJobs.remove(id);
+		} catch (Exception e) {
+			System.out.println("...");
+			// TODO: handle exception
+		}
+
+	}
+	
+	private synchronized Queue<int[]> jobQueueAccess() {
+		return jobQueue;
+	}
+	
+	private synchronized Map<String, int[]> inProgressJobsAccess() {
+		return inProgressJobs;
+	}
+	
 	//will likely need more checks
 	public boolean jobIsFinished() {
-		return jobQueue.isEmpty() && inProgressJobs.isEmpty();
+		return jobQueueAccess().isEmpty() && inProgressJobsAccess().isEmpty() && workHasBeenAllocated; 
+		//*If work was a large amount of allocating, someone may check at a point where the jobQUeue has nothing yet - veyr unlikely
+	}
+	
+	//request can be status or to stop job etc.
+	//TODO: parsing of request etc.
+	public String makeRequest(String req) {
+		return "Requesting Not Implemented";
 	}
 	
 	
-	public NodeMaster(String opType, double[][] matrixA, double[][] matrixB, int id, int currentWorkerAvailablity) throws IOException  {
-		workersCount = currentWorkerAvailablity;
-		setUpJob(matrixA, matrixB, opType, id);
-		Map<Integer, Integer> workerTable = getWorkerTable();
-		Map<Integer, int[]> inProgressJobs = new HashMap<Integer, int[]>();
+	public NodeMaster(String opType, double[][] matrixA, double[][] matrixB, int id, Socket s, int workerCount) throws IOException  {	
+		socket = s;
+		masterID = id;
+		workersCount = workerCount;
+		setUpJob(matrixA, matrixB, opType);
 	}
+	
+	
 
 	
 	public void run()  {
-		sendWork();	
-		isFinished = true;
+		System.out.println("Node Master - " + masterID + " allocating work" );
+		allocateWork();	
 //		System.out.println("Answer: ");
 //		SimpleMatrix simpleMatrix = new SimpleMatrix(answer);
 //		simpleMatrix.print();
+		System.out.println("Node Master - " + masterID + " finished sending work" );
+		
+		//will wait until it's answer has been accessed and taken
+		//waitForAnswerRetrieval();
 	}	
 	
+
 	public double[][] getAnswer(){
-		return answer;
-		
+		if(jobIsFinished()) {
+			return answer;	
+		}
+		else {
+			System.out.println("Job not finished yet - answer not available");
+			return null;
+		}
 	}
 	
 	// ---------------------------------------
 	// --------- private calc funcs ---------
 	// ---------------------------------------
 	
+	// -----------------------------------------------------------------------
 	// should send all work of to nodes
 	// later improvements may have checking during this loop for any failures
-	private void sendWork() {
+	// -----------------------------------------------------------------------
+	private void allocateWork() {
 		switch (operationType) {
 		case "multiplication":
-				while(!jobQueue.isEmpty()) {
+				while(!jobQueueAccess().isEmpty()) {
 					int[] indices = jobQueue.peek();
-					jobQueue.remove();
+					jobQueueAccess().remove();
 					//getting row from A and full matrix from B
 					double[][] matrixARows = getMatrixARows(indices[0], indices[1]);
 					double[][] matrixBCols = bMatrix;
 					//give a small task an ID and store the indices we used 
 					//in case we lose this data and to keep track of it's progress and then completion
-					inProgressJobs.put(taskIDCount, indices);
+					String id = createIdConcat(masterID, taskIDCount++);
+					inProgressJobsAccess().put(id, indices);
 		
+					SendWork sendWork = new SendWork(2, matrixARows, matrixBCols, id);
 					
-					//System.out.println("Local calc....");
-					testCalcMultiplication(matrixARows, matrixBCols, taskIDCount);
-					taskIDCount++;
-					//TODO:make call to a node to send 
-					//System.out.println("Node Socket communication not yet implemented");	
+					
+					sendToNode(sendWork);
 				
 			}		
 			break;
 		case "addition":
-			while(!jobQueue.isEmpty()) {
-				int[] indices = jobQueue.peek();
-				jobQueue.remove();
+			while(!jobQueueAccess().isEmpty()) {
+				int[] indices = jobQueueAccess().peek();
+				jobQueueAccess().remove();
 				//getting row from A and full matrix from B
 				double[][] matrixARows = getMatrixARows(indices[0], indices[1]);
 				double[][] matrixBCols = getMatrixBRows(indices[0], indices[1]);
+				
+				
 				//give a small task an ID and store the indices we used 
 				//in case we lose this data and to keep track of it's progress and then completion
-				inProgressJobs.put(taskIDCount, indices);
+				String id = createIdConcat(masterID, taskIDCount++);
+				inProgressJobsAccess().put(id, indices);
 	
-				
-				//System.out.println("Local calc....");
-				testCalcAddition(matrixARows, matrixBCols, taskIDCount, 1);
-				taskIDCount++;
-				
-
-				//TODO:make call to a node to send 
-				//System.out.println("Node Socket communication not yet implemented");
+				SendWork sendWork = new SendWork(1, matrixARows, matrixBCols, id);
+				sendToNode(sendWork);
 			}	
 			break;
 		case "subtraction":
-			while(!jobQueue.isEmpty()) {
-				int[] indices = jobQueue.peek();
-				jobQueue.remove();
+			while(!jobQueueAccess().isEmpty()) {
+				int[] indices = jobQueueAccess().peek();
+				jobQueueAccess().remove();
 				//getting row from A and full matrix from B
 				double[][] matrixARows = getMatrixARows(indices[0], indices[1]);
 				double[][] matrixBCols = getMatrixBRows(indices[0], indices[1]);
 				//give a small task an ID and store the indices we used 
 				//in case we lose this data and to keep track of it's progress and then completion
-				inProgressJobs.put(taskIDCount, indices);
+				String id = createIdConcat(masterID, taskIDCount++);
+				inProgressJobsAccess().put(id, indices);
 	
+				SendWork sendWork = new SendWork(3, matrixARows, matrixBCols, id);
 				
-				//System.out.println("Local calc....");
-				testCalcAddition(matrixARows, matrixBCols, taskIDCount, -1);
-				taskIDCount++;
-				
-
-				//TODO:make call to a node to send 
-				//System.out.println("Node Socket communication not yet implemented");	
+				sendToNode(sendWork);
 			}
 
 			break;
@@ -156,83 +202,44 @@ public class NodeMaster extends Thread {
 		default:
 			break;
 		}
-
+		
+		workHasBeenAllocated = true;
 			
 	}
 	
-	
-	
-	private void testCalcMultiplication(double[][] a, double[][] b, int taskID) {
-		SimpleMatrix aMatrix = new SimpleMatrix(a);
-		SimpleMatrix bMatrix = new SimpleMatrix(b);
-//		System.out.println("Calculating matrices..");
-//		aMatrix.print();
-//		bMatrix.print();
-		DMatrixRMaj  res = aMatrix.mult(bMatrix).getDDRM();
-		//System.out.println("Answer..");
-		//res.print();
-		int rowSize = res.numCols;
-		double[] resArr = res.getData();
+	private void sendToNode(SendWork s) {
 		
-		//get original coords of the completed job
-		int[] indices = inProgressJobs.get(taskID);
-		//indices 0-1 are the row position (always just 1 in our row by matrix mul)
-		//we are putting a new row in the answer essnetially
-		for(int i = 0; i < resArr.length; i++) {
-			answer[indices[0]][i] = resArr[i];
+		
+		
+		
+		try {
+			so = new Socket("104.215.191.245", 3000);
+		} catch (UnknownHostException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		} catch (IOException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}
+		ObjectOutputStream out;
+		try {
+			out = new ObjectOutputStream(so.getOutputStream());
+			out.writeObject(s);
+			//out.close();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
 		}
 		
-		inProgressJobs.remove(taskID);
-		
-	}
-	
-	private void testCalcAddition(double[][] a, double[][] b, int taskID, int sign) {
-		SimpleMatrix aMatrix = new SimpleMatrix(a);
-		SimpleMatrix bMatrix = new SimpleMatrix(b).scale(sign);
-//		System.out.println("Calculating matrices..");
-//		aMatrix.print();
-//		bMatrix.print();
-		DMatrixRMaj  res = aMatrix.plus(bMatrix).getDDRM();
-		//System.out.println("Answer..");
-		//res.print();
-		int rowSize = res.numCols;
-		double[] resArr = res.getData();
-		
-		//get original coords of the completed job
-		int[] indices = inProgressJobs.get(taskID);
-		//indices 0-1 are the row position (always just 1 in our row by matrix mul)
-		//we are putting a new row in the answer essnetially
-		for(int i = 0; i < resArr.length; i++) {
-			answer[indices[0]][i] = resArr[i];
-		}
-		
-		inProgressJobs.remove(taskID);
-		
-	}
-	
-	//get worker with lowest load in hashtable
-	//TODO: rework later when we are load balancing
-	private int getAvailableWorkerID(Map<Integer, Integer> workerTable) {
-		int lowest = 1000;
-		int lowestId = -1;
-		for(java.util.Map.Entry<Integer, Integer> keyVal : workerTable.entrySet()) {
-			if(keyVal.getValue() < lowest) {
-				lowest = keyVal.getValue();
-				lowestId = keyVal.getKey();				
-			}
-		}
-		
-		return lowestId;
 	}
 	
 	
-	//TODO:will get from the server class a list of the worker Id's and their load 
-	private Map<Integer, Integer> getWorkerTable() {		
-		Map<Integer, Integer> workerTable = new HashMap<Integer, Integer>();
-		return workerTable;
+	private String createIdConcat(int primKey, int secondKey) {
+		return Integer.toString(primKey) + ":" + Integer.toString(secondKey);
 	}
 	
-	private void setUpJob(double[][] matrixA, double[][] matrixB, String opType, int id) {
+	
+	private void setUpJob(double[][] matrixA, double[][] matrixB, String opType) {
 		
 		matrixSize = matrixA.length;
 		aMatrix = matrixA;
@@ -254,7 +261,7 @@ public class NodeMaster extends Thread {
 				arr[1] = i;  //going from row i to i+1
 				arr[2] = 0;
 				arr[3] = matrixSize-1;	//going from col 0 to end of cols (all of them essentially)
-				jobQueue.add(arr);
+				jobQueueAccess().add(arr);
 			}			
 			break;
 		case "addition":
@@ -267,7 +274,7 @@ public class NodeMaster extends Thread {
 				arr[1] = i;  //going from row i to i+1
 				arr[2] = i;
 				arr[3] = i;	//going from col 0 to end of cols (all of them essentially)
-				jobQueue.add(arr);
+				jobQueueAccess().add(arr);
 			}			
 			break;
 		case "subtraction":
@@ -280,7 +287,7 @@ public class NodeMaster extends Thread {
 				arr[1] = i;  //going from row i to i+1
 				arr[2] = i;
 				arr[3] = i;	//going from col 0 to end of cols (all of them essentially)
-				jobQueue.add(arr);
+				jobQueueAccess().add(arr);
 			}			
 			break;
 
@@ -292,52 +299,25 @@ public class NodeMaster extends Thread {
 		
 	//returns matrix of requested segments from 
 	private double[][] getMatrixARows(int rowAStart, int rowAEnd) {
-		 
-		 int size = (rowAEnd+1) - (rowAStart);
-		 double [][]arr = new double[size][size];
-		 double []arr2 = new double[matrixSize];
-		 int counti = 0;
-		 
-		 // We can guarantee we will get the correct rows to calc 
-		 // as the thread manager has split the jobs up already
-		 for(int i = rowAStart; i < (rowAStart+size); i++) {
-			 
-			 //get column from i row
-			 for(int j = 0; j < (matrixSize); j++) {
-				 
-				arr2[j]= aMatrix[i][j];  
-			 }
-			 //add column to 2Darray
-			 arr[counti++] = arr2; 
+		try {
+			 double[] row = aMatrix[rowAStart];
+			 double[][] arr = new double[1][];
+			 arr[0] = row;
+			 return arr;
+			
+		} catch (Exception e) {
+			// TODO: handle exception
+			e.printStackTrace();
+			return null;
+		}
 
-			 arr2 =  new double[matrixSize];
-		 }
-		 
-		 return arr;
 	 }
 	
 	private double[][] getMatrixBRows(int rowAStart, int rowAEnd) {
 		 
-		 int size = (rowAEnd+1) - (rowAStart);
-		 double [][]arr = new double[size][size];
-		 double []arr2 = new double[matrixSize];
-		 int counti = 0;
-		 
-		 // We can guarantee we will get the correct rows to calc 
-		 // as the thread manager has split the jobs up already
-		 for(int i = rowAStart; i < (rowAStart+size); i++) {
-			 
-			 //get column from i row
-			 for(int j = 0; j < (matrixSize); j++) {
-				 
-				arr2[j]= bMatrix[i][j];  
-			 }
-			 //add column to 2Darray
-			 arr[counti++] = arr2; 
-
-			 arr2 =  new double[matrixSize];
-		 }
-		 
+		double[] row = bMatrix[rowAStart];
+		 double[][] arr = new double[1][];
+		 arr[0] = row;
 		 return arr;
 	 }
 	 

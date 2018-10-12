@@ -31,17 +31,32 @@ public class MatrixClient {
 	private static double [][] a =null;
 	private static double [][] b =null;
 	static MatrixResult res;
+	private static ObjectOutputStream out;
 
+
+
+
+	private static DataInputStream dis;
+
+
+
+
+	private static ObjectInputStream in;
+	
 	private int id;
 
 
 
 			
 	public enum BinaryOperation{
-		ADD,
-		MUTIPLY,
-		SUBSTRACT,
-		STATUS	
+		ADD,  //1
+		MUTIPLY,  //2
+		SUBSTRACT, //3
+		STATUS, //4
+		RESULT, //5
+		PartialSum, //6 - Use by the calcWOrkers for when the Node's send work
+		Testing, //7
+		GetTestResults //8
 	}
 	BinaryOperation operation;
 	//setup client with requested port
@@ -71,9 +86,6 @@ public class MatrixClient {
 	
 
 	/*
-=======
-	
->>>>>>> 413d0570f947d842fc40aa8b728882710285d587
 	private void setMatrixSize(int n, String command) throws IOException {
 		System.out.println("Requesting size " + n);
 		BufferedWriter writer = new BufferedWriter(out);
@@ -81,7 +93,6 @@ public class MatrixClient {
 		writer.newLine();
 		writer.flush();
 	}
-<<<<<<< HEAD
 	*/
 	//at this stage don't need to use 'command'
 	
@@ -100,7 +111,7 @@ public class MatrixClient {
 		}
 		// print matrix to check the result
 		//print_2D(a);
-		System.out.println("\n");
+		System.out.println("Created matrix \n");
 		//print_2D(b);
 
 	}
@@ -128,13 +139,31 @@ public class MatrixClient {
 				a[i][j]= Double.parseDouble(cell[j]);
 			}
 		}
+		sc.close();
 	}
+
 
 	// main function for send and recive 
 	public static void sendObject() throws IOException, ClassNotFoundException {
 		String id = null;
 		int matrixSize = 100;
 		String output;
+
+//		id = "1";
+//		CreateMatrix(5);
+//		SendWork send = new SendWork(3,a,b,id);		
+//		out = new ObjectOutputStream(socket.getOutputStream());
+//		dis = new DataInputStream(socket.getInputStream());
+//		in = new ObjectInputStream(socket.getInputStream());
+//		out.writeObject(send);
+//		System.out.println("Wrote object");
+//		
+//		res = (MatrixResult) in.readObject();
+//		print_2D(res.answer);
+//		
+//			output = dis.readUTF();
+//			System.out.println("this is your work id, plz keep it"+output);
+		
 		Scanner sc = new Scanner (System.in);
 		System.out.println("input the opreation you want ");
 		System.out.println("1 for add \n 2for multiply \n 3 for minus ");
@@ -152,9 +181,9 @@ public class MatrixClient {
 				 
 				CreateMatrix(matrixSize);
 			}
-		}else if (op ==4 || op == 5) {
+		}else if (op ==4 || op == 5 || op == 8) {
 			System.out.println("enter the id");
-			id = sc.nextLine();
+			id = Integer.toString(sc.nextInt());
 		}
 		SendWork send = new SendWork(op,a,b,id);
 		System.out.println("send created");
@@ -165,11 +194,20 @@ public class MatrixClient {
 		
 		out.writeObject(send);
 		System.out.println("send finished");
-		if(op == 5) {
+		if(op == 4 || op == 5) {
 			ObjectInputStream in = new ObjectInputStream(socket.getInputStream());
-			res = (MatrixResult) in.readObject();
-			print_2D(res.answer);
+			MatrixResult res = (MatrixResult) in.readObject();
+			
+			if(res.stat == Status.not_finished) {
+				System.out.println("Job not finished yet - please check later");
+				
+			}
+			else if(res.stat == Status.successful_calculation) {
+				print_2D(res.answer);
+			}
+			
 			in.close();
+			
 		}else {
 			DataInputStream dis = new DataInputStream(socket.getInputStream());
 			output = dis.readUTF();
@@ -178,56 +216,40 @@ public class MatrixClient {
 		}
 		out.close();
 		socket.close();
+		sc.close();
 		
 	}
 
 	public static void main(String[] args) {
 		
-		String hostname = "localhost";
+		String hostname = "137.116.128.225";
 		int port = 1024;
-		
+		System.out.println("Using host/IP: " + hostname + " port: " + port);
 		
 
-		if (args.length != 3) {
-			System.out.println("Use the default setting...");
-		} 
-		else {
-			//use cmd line args
-			hostname = args[0];
-			port = Integer.parseInt(args[1]);
-//			String s = args[3];
-//			System.out.println("Process " + s);
-			
-		}
+//		if (args.length != 2) {
+//			System.out.println("Use the default setting...");
+//		} 
+//		else {
+//			//use cmd line args
+//			hostname = args[0];
+//			port = Integer.parseInt(args[1]);
+//			System.out.println("Using host/IP: " + hostname + " port: " + port);
+////			String s = args[3];
+////			System.out.println("Process " + s);
+//			
+//		}
 
 		String rowCol = "row_column";
 		MatrixClient client = new MatrixClient(hostname, port);
 		try {
-		sendObject();
+			sendObject();
 		}catch( IOException e ) {
 			e.printStackTrace();
 		}catch(ClassNotFoundException e) {
 			e.printStackTrace();
 		}
-		
-		
-
-		
-
-		
-
-		
-//		try {
-//			Thread.sleep(1000000);
-//		} catch (InterruptedException e) {
-//			// TODO Auto-generated catch block
-//			e.printStackTrace();
-//		}
-//		
-
-		
-		
-//		System.out.println("Result recieved: error code = " + result.errorcode);		
+			
 		
 	}
 
