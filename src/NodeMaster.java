@@ -2,6 +2,7 @@ import java.util.Queue;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
+import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.UnknownHostException;
 import java.util.HashMap;
@@ -205,20 +206,27 @@ public class NodeMaster extends Thread {
 		workHasBeenAllocated = true;
 			
 	}
-	
-	private void sendToNode(SendWork s) {	
+
+	private void sendToNode(SendWork s) {
+		
+		
+
 		try {
+			
+
 			String bestWorker = null;
 			//keep repeating the loop, until some worker are free now, it wont sent out 
 			while(bestWorker == null) {
-				bestWorker =WorkerInfo.getAvailableNode();
+				bestWorker = WorkerInfo.getAvailableNode();
 			}
 			so = new Socket(bestWorker, 1024);
+			
 			DataOutputStream dos = new DataOutputStream(so.getOutputStream());
 			dos.writeBoolean(true);
-			System.out.println("1111");
+
 			ObjectOutputStream out = new ObjectOutputStream(so.getOutputStream());
 			out.writeObject(s);
+
 		} catch (UnknownHostException e1) {
 			// TODO Auto-generated catch block
 			e1.printStackTrace();

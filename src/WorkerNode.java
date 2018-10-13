@@ -31,7 +31,6 @@ public class WorkerNode {
 		
 		
 		
-		// TODO Auto-generated method stub
 		int port = 1024;
 		int socketPort = 1000;
 		int count = 0;
