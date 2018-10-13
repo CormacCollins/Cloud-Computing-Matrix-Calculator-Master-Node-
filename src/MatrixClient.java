@@ -67,7 +67,7 @@ public class MatrixClient {
 	public MatrixClient(String hostname, int port) {		
 		try {
 			// create a socket
-			socket = new Socket(hostname, port);
+			socket = new Socket("137.116.128.225", port);
 			//out = new OutputStreamWriter(socket.getOutputStream());
 			//in = new ObjectInputStream(socket.getInputStream());			
 

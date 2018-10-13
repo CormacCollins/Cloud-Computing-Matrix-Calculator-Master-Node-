@@ -213,7 +213,7 @@ public class NodeMaster extends Thread {
 		
 		
 		try {
-			so = new Socket("104.215.191.245", 3000);
+			so = new Socket("104.215.191.245", 1024);
 		} catch (UnknownHostException e1) {
 			// TODO Auto-generated catch block
 			e1.printStackTrace();

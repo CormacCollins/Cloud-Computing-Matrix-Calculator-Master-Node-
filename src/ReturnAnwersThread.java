@@ -27,7 +27,7 @@ public class ReturnAnwersThread extends Thread  {
 	    private void sendToServer(SendWork rtAnswer) {
 
 			try {
-				socket = new Socket("", 1024);
+				socket = new Socket("137.116.128.225", 1024);
 			} catch (UnknownHostException e1) {
 				// TODO Auto-generated catch block
 				e1.printStackTrace();
