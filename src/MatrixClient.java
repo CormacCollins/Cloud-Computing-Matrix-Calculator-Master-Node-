@@ -56,7 +56,8 @@ public class MatrixClient {
 		RESULT, //5
 		PartialSum, //6 - Use by the calcWOrkers for when the Node's send work
 		Testing, //7
-		GetTestResults //8
+		GetTestResults, //8
+		GetWorkerStatus //9
 	}
 	BinaryOperation operation;
 	//setup client with requested port
@@ -67,7 +68,8 @@ public class MatrixClient {
 	public MatrixClient(String hostname, int port) {		
 		try {
 			// create a socket
-			socket = new Socket(hostname, port);
+			socket = new Socket("104.215.191.245", 1024);
+			socket.setSoTimeout(10000);
 			//out = new OutputStreamWriter(socket.getOutputStream());
 			//in = new ObjectInputStream(socket.getInputStream());			
 

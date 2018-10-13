@@ -12,11 +12,11 @@ public class WorkerInfo {
 	private static int workerCount = 5; //will need to query them all in the future
 	private Map<Integer, double[]> nodeList;
 	private static String[] ipList = {
-			"104.215.191.245",
-			"52.163.83.123",
-			"13.67.77.181",
-			"13.67.71.84",
-			"13.76.195.39"
+			"104.215.191.245"
+//			"52.163.83.123",
+//			"13.67.77.181",
+//			"13.67.71.84",
+//			"13.76.195.39"
 	};
 	
 	public WorkerInfo() {
