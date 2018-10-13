@@ -157,8 +157,6 @@ public class NodeMaster extends Thread {
 					inProgressJobsAccess().put(id, indices);
 		
 					SendWork sendWork = new SendWork(2, matrixARows, matrixBCols, id);
-					
-					
 					sendToNode(sendWork);
 				
 			}		
@@ -220,6 +218,11 @@ public class NodeMaster extends Thread {
 				bestWorker =WorkerInfo.getAvailableNode();
 			}
 			so = new Socket(bestWorker, 1024);
+			DataOutputStream dos = new DataOutputStream(so.getOutputStream());
+			dos.writeBoolean(true);
+			System.out.println("1111");
+			ObjectOutputStream out = new ObjectOutputStream(so.getOutputStream());
+			out.writeObject(s);
 		} catch (UnknownHostException e1) {
 			// TODO Auto-generated catch block
 			e1.printStackTrace();
@@ -227,17 +230,7 @@ public class NodeMaster extends Thread {
 			// TODO Auto-generated catch block
 			e1.printStackTrace();
 		}
-		ObjectOutputStream out;
-		try {
-			DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
-			dos.writeBoolean(true);
-			out = new ObjectOutputStream(so.getOutputStream());
-			out.writeObject(s);
-			//out.close();
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+	
 		
 	}
 	
