@@ -1,4 +1,5 @@
 import java.util.Queue;
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.net.ServerSocket;
@@ -214,6 +215,14 @@ public class NodeMaster extends Thread {
 		try {
 			so = new Socket("104.215.191.245", 1024);
 			so.setSoTimeout(10000);
+
+			String bestWorker = null;
+			//keep repeating the loop, until some worker are free now, it wont sent out 
+			while(bestWorker == null) {
+				bestWorker = WorkerInfo.getAvailableNode();
+			}
+			so = new Socket(bestWorker, 1024);
+
 		} catch (UnknownHostException e1) {
 			// TODO Auto-generated catch block
 			e1.printStackTrace();
@@ -223,6 +232,8 @@ public class NodeMaster extends Thread {
 		}
 		ObjectOutputStream out;
 		try {
+			DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
+			dos.writeBoolean(true);
 			out = new ObjectOutputStream(so.getOutputStream());
 			out.writeObject(s);
 			//out.close();

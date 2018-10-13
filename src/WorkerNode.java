@@ -1,5 +1,7 @@
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.ObjectInputStream;
@@ -31,6 +33,10 @@ public class WorkerNode {
 		
 		// TODO Auto-generated method stub
 		int port = 1024;
+<<<<<<< HEAD
+=======
+		int socketPort = 1000;
+>>>>>>> f9c43401fc7edadeaefe0cf95d56616fd55c9587
 		int count = 0;
 		int workerCount = 1;
 		if (args.length >= 2) {
@@ -59,9 +65,13 @@ public class WorkerNode {
 		try {
 			serverSocket = new ServerSocket(port);
 			while(true) {
+				
+				
 
 				
 				Socket socket = serverSocket.accept();
+				DataInputStream dis = new DataInputStream(socket.getInputStream());
+			    if(dis.readBoolean()) {
 
 				//Data is given to the calc thread, which will then pass it on to a sending thread afterwards
 				//the sending thread will use a socket to go straight back to the original server
@@ -71,6 +81,10 @@ public class WorkerNode {
 				SendWork rec = (SendWork) in.readObject();
 					
 				workerNode.workList.add(rec);
+			    }else {
+			    	DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
+			    	dos.writeInt(workerNode.workList.size());
+			    }
 				
 			}
 		} catch (IOException | ClassNotFoundException e) {
