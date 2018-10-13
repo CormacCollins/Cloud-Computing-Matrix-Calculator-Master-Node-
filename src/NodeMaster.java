@@ -220,7 +220,7 @@ public class NodeMaster extends Thread {
 				bestWorker = WorkerInfo.getAvailableNode();
 			}
 			so = new Socket(bestWorker, 1024);
-			so.setSoTimeout(10000);
+			
 			DataOutputStream dos = new DataOutputStream(so.getOutputStream());
 			dos.writeBoolean(true);
 

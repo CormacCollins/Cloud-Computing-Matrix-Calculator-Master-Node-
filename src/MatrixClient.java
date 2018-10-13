@@ -169,7 +169,7 @@ public class MatrixClient {
 		Scanner sc = new Scanner (System.in);
 		System.out.println("input the opreation you want ");
 		System.out.println("1 for add \n 2for multiply \n 3 for minus ");
-		System.out.println("4 for check status \n 5 for get result");
+		System.out.println("4 for check status \n 5 for get result \n 0 for stop and bill");
 		int op = sc.nextInt();
 		if(op == 1 || op ==2 || op == 3) {
 			System.out.println("do you want to input the matrix by hand?");
@@ -186,7 +186,7 @@ public class MatrixClient {
 				 
 				CreateMatrix(matrixSize);
 			}
-		}else if (op ==4 || op == 5 || op == 8) {
+		}else if (op ==4 || op == 5 || op == 8 || op ==0) {
 			System.out.println("enter the id");
 			id = Integer.toString(sc.nextInt());
 		}
@@ -212,7 +212,13 @@ public class MatrixClient {
 			
 			in.close();
 			
-		}else {
+		}else if(op == 0) {
+			DataInputStream dis = new DataInputStream(socket.getInputStream());
+			double bill = dis.readDouble();
+			System.out.println("here is your bill"+bill);
+			dis.close();
+		}
+		else {
 			DataInputStream dis = new DataInputStream(socket.getInputStream());
 			output = dis.readUTF();
 			System.out.println("this is your work id, plz keep it"+output);
