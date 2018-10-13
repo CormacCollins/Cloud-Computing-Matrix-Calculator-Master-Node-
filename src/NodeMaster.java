@@ -206,11 +206,7 @@ public class NodeMaster extends Thread {
 			
 	}
 	
-	private void sendToNode(SendWork s) {
-		
-		
-		
-		
+	private void sendToNode(SendWork s) {	
 		try {
 			String bestWorker = null;
 			//keep repeating the loop, until some worker are free now, it wont sent out 

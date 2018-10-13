@@ -110,15 +110,14 @@ public class MatrixClient {
 			}
 		}
 		// print matrix to check the result
-		//print_2D(a);
+		print_2D(a);
 		System.out.println("Created matrix \n");
-		//print_2D(b);
+		print_2D(b);
 
 	}
 	
 	public static void print_2D(double[][] c2) {
 		for (double[] row : c2)
-
 			// converting each row as string
 			// and then printing in a separate line
 			System.out.println(Arrays.toString(row));
@@ -127,20 +126,21 @@ public class MatrixClient {
 	
 
 	// input matrix by hand 
-	public static void TypeMatrix(int size,double[][] a) {
-		Scanner sc = new Scanner(System.in);
+	public static void TypeMatrix(int size,double[][] a,Scanner sc) {
+		
 		a = new double[size][size];	
 		System.out.println("enter the matrix you want, ','for divide each element,and';'for switch row ");
-		String input = sc.nextLine();
-		String[] row = input.split(";");
+		
 		for(int i = 0;i<size;i++) {
-			String[] cell = row[i].split(",");
+			
 			for(int j = 0;j<size;j++) {
-				a[i][j]= Double.parseDouble(cell[j]);
+				a[i][j]= sc.nextDouble();
 			}
 		}
-		sc.close();
+		print_2D(a);
+		
 	}
+		 
 
 
 	// main function for send and recive 
@@ -175,8 +175,11 @@ public class MatrixClient {
 			System.out.println("inter the size of matrix you want");
 			matrixSize = sc.nextInt();
 			if(temp) {
-				TypeMatrix(matrixSize,a);
-				TypeMatrix(matrixSize,b);
+				TypeMatrix(matrixSize,a,sc);
+				
+				
+				TypeMatrix(matrixSize,b,sc);
+				
 			}else {
 				 
 				CreateMatrix(matrixSize);
