@@ -18,7 +18,7 @@ public class WorkerInfo {
 //			"13.67.71.84",
 //			"13.76.195.39"
 	};
-	private static Socket s;
+	
 	public WorkerInfo() {
 		nodeList = new HashMap<Integer, double[]>();
 	}
@@ -48,7 +48,7 @@ public class WorkerInfo {
 	    String bestWorker = null;
 		for(String temp : ipList ) {
 			try {
-				s = new Socket(temp,1024);
+				Socket s = new Socket(temp,1024);
 				DataOutputStream dos = new DataOutputStream(s.getOutputStream());
 				dos.writeBoolean(false);// ask worker to get the load 
 				DataInputStream dis = new DataInputStream(s.getInputStream());
@@ -56,10 +56,12 @@ public class WorkerInfo {
 					largestLoad = dis.readInt();
 					bestWorker = temp;
 				}
+				s.close();
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
+			
 		}
 		return bestWorker;
 	}

@@ -19,7 +19,7 @@ import java.util.Queue;
 
 
 public class WorkerNode {
-	protected Socket socket;
+	
 	
 	int workIdIncrementor = 0;
 	private Queue<SendWork> workList = new LinkedList<SendWork>();
@@ -92,9 +92,7 @@ public class WorkerNode {
 	}
 	
 	
-	public void setSocket(Socket socket) {
-		this.socket = socket;
-	}
+	
 	
 //	public void update() {
 //		if(workCompleted.length > 0) {
