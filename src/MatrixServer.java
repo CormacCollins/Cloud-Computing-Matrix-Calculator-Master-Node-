@@ -44,10 +44,11 @@ public class MatrixServer {
 	static int uniqueIdCount = 0;
 	// unique look up hash for all worker nodeMasters
 	private static Map<Integer, NodeMaster> nodeMasterList = new HashMap<Integer, NodeMaster>();
+	private static Map<Integer, Long> bill = new HashMap<Integer, Long>();
 	private static DataInputStream dis = null;
 	boolean isTesting = false;
 	boolean testingComplete = false;
-	
+	private final static double BILLRATE = 1/600000;//
 	private static int size;
 	private static MatrixResult res;
 	private static String op;
@@ -108,6 +109,7 @@ public class MatrixServer {
 				MatrixServer matrixServer = new MatrixServer();
 				matrixServer.setSocket(socket);
 				System.out.println("create finished ");
+				
 
 				System.out.println("new Socket set");
 
@@ -155,7 +157,9 @@ public class MatrixServer {
 				}				
 				else if (rec.op == 1 || rec.op == 2 || rec.op == 3) {
 					System.out.println("Recieved request");
-
+					int key = uniqueIdCount++;
+					long time = System.currentTimeMillis();
+					bill.put(key, time);
 					System.out.println("Matrices recieved: ");
 						
 					SimpleMatrix aMatrix = new SimpleMatrix(rec.a);
@@ -164,26 +168,12 @@ public class MatrixServer {
 					bMatrix.print();
 					
 					
-					switch (rec.op) {
-					case 1:
-						System.out.println("Actual answer:");
-						aMatrix.plus(bMatrix).print();
-						break;
-					case 2:
-						System.out.println("Actual answer:");
-						aMatrix.mult(bMatrix).print();
-						break;
-					case 3:
-						System.out.println("Actual answer:");
-						aMatrix.minus(bMatrix).print();
-					default:
-						break;
-					}
+					
 					
 					
 					DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
 
-					int key = uniqueIdCount++;
+					
 					
 
 					System.out.println("Starting NodeManager on job id: " + key);
@@ -212,7 +202,14 @@ public class MatrixServer {
 					
 					ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream());
 					out.writeObject(res);
-				} 
+				}else if (rec.op == 0) {
+					DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
+					double bills =bill.get(Integer.parseInt(rec.id));
+					bills = (System.currentTimeMillis() - bills)*BILLRATE;
+					dos.writeDouble(bills);
+					nodeMasterList.remove(Integer.parseInt(rec.id));
+					bill.remove(Integer.parseInt(rec.id));
+				}
 			
 
 				// will run random tests on mul add and subtraction
