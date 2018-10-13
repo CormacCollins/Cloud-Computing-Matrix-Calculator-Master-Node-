@@ -1,6 +1,7 @@
 import java.util.Queue;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
+import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.UnknownHostException;
 import java.util.HashMap;
@@ -210,10 +211,9 @@ public class NodeMaster extends Thread {
 	private void sendToNode(SendWork s) {
 		
 		
-		
-		
 		try {
-			so = new Socket("104.215.191.245", 3000);
+			so = new Socket("104.215.191.245", 1024);
+			so.setSoTimeout(10000);
 		} catch (UnknownHostException e1) {
 			// TODO Auto-generated catch block
 			e1.printStackTrace();

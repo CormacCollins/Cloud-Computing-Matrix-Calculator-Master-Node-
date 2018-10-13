@@ -71,9 +71,7 @@ public class MatrixServer {
 		portCount = 1025;
 		int count = 0;
 		int workerCount = 1;
-		int[] socketList = new int[10000];
-		int socketIndex = 0;
-		String id;
+
 
 		if (args.length == 2) {
 			try {
