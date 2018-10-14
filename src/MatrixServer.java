@@ -48,10 +48,10 @@ public class MatrixServer {
 	private static DataInputStream dis = null;
 	boolean isTesting = false;
 	boolean testingComplete = false;
-	private final static double BILLRATE = 10;//
 	private static int size;
 	private static MatrixResult res;
 	private static String op;
+	private final static double BILLRATE =10;
 	
 	//need to keep track of used ports as the nodeMaster will be using ports on the same machine
 	private static int portCount;

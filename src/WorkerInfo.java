@@ -13,11 +13,10 @@ public class WorkerInfo {
 	private Map<Integer, double[]> nodeList;
 	private static String[] ipList = {
 			"104.215.191.245",
-			"52.163.83.123"
-//			"13.67.77.181",
-//			"13.67.71.84",
-//			"13.76.195.39"
-			
+			"13.76.195.39",
+			"52.163.83.123",
+			"13.67.77.181",
+			"13.67.71.84"	
 	};
 	private static Socket s;
 	
@@ -51,13 +50,13 @@ public class WorkerInfo {
 	    String bestWorker = null;
 		for(String temp : ipList ) {
 			try {
-				System.out.println("1");
+			
 				s = new Socket(temp,1024);
 				DataOutputStream dos = new DataOutputStream(s.getOutputStream());
 				dos.writeBoolean(false);// ask worker to get the load 
 				DataInputStream dis = new DataInputStream(s.getInputStream());
 				int currentLoad = dis.readInt();
-				System.out.println("get corrent load ");
+				
 				if(currentLoad<largestLoad) {
 					largestLoad = currentLoad;
 					bestWorker = temp;

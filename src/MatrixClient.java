@@ -181,7 +181,7 @@ public class MatrixClient {
 				 
 				CreateMatrix(matrixSize);
 			}
-		}else if (op ==4 || op == 5 || op == 8) {
+		}else if (op ==4 || op == 5 || op == 8 || op == 0) {
 			System.out.println("enter the id");
 			id = Integer.toString(sc.nextInt());
 		}

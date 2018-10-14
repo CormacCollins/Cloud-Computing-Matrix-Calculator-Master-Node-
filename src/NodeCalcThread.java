@@ -33,6 +33,13 @@ public class NodeCalcThread extends Thread  {
 			int rowLength = s.b[0].length;
 			//int heightLength = s.b.length;
 			double[][] answer;
+			System.out.println("worker node id "+ s.id);
+			try {
+				Thread.sleep(100);
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 			switch (s.op) {
 			case 1:
 				//System.out.println("Calculating a = ");
@@ -64,7 +71,7 @@ public class NodeCalcThread extends Thread  {
 //				SimpleMatrix b1Matrix = new SimpleMatrix(s.b);
 //				b1Matrix.print();
 				
-				System.out.println("Row length: " +  rowLength);
+				
 				for(int i = 0; i < rowLength; i++) {
 					double ans = 0;
 					for(int j = 0; j < rowLength; j++) {
