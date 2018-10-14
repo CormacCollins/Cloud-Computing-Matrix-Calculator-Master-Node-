@@ -48,10 +48,10 @@ public class MatrixServer {
 	private static DataInputStream dis = null;
 	boolean isTesting = false;
 	boolean testingComplete = false;
-	private final static double BILLRATE = 1/600;//
 	private static int size;
 	private static MatrixResult res;
 	private static String op;
+	private final static double BILLRATE =10;
 	
 	//need to keep track of used ports as the nodeMaster will be using ports on the same machine
 	private static int portCount;
@@ -204,11 +204,13 @@ public class MatrixServer {
 					long startTime =bill.get(Integer.parseInt(rec.id));
 					NodeMaster temp = nodeMasterList.get(Integer.parseInt(rec.id));
 					double bills = (temp.endTime-startTime)*BILLRATE;
+					dos.writeDouble(bills);
 				}else if (rec.op == 0) {
 					DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
 					long startTime =bill.get(Integer.parseInt(rec.id));
 					NodeMaster temp = nodeMasterList.get(Integer.parseInt(rec.id));
 					double bills = (temp.endTime-startTime)*BILLRATE;
+					dos.writeDouble(bills);
 					
 				}
 			
