@@ -9,7 +9,7 @@ public class NodeCalcThread extends Thread  {
 		WorkerNode wNode;
 		
 		public NodeCalcThread(WorkerNode w) {
-			wNode = w;
+			wNode = w;	
 		}
 	   
 	    

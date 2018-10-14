@@ -56,8 +56,7 @@ public class MatrixClient {
 		RESULT, //5
 		PartialSum, //6 - Use by the calcWOrkers for when the Node's send work
 		Testing, //7
-		GetTestResults, //8
-		GetWorkerStatus //9
+		GetTestResults //8
 	}
 	BinaryOperation operation;
 	//setup client with requested port
@@ -68,8 +67,7 @@ public class MatrixClient {
 	public MatrixClient(String hostname, int port) {		
 		try {
 			// create a socket
-			socket = new Socket("104.215.191.245", 1024);
-			socket.setSoTimeout(10000);
+			socket = new Socket("137.116.128.225", port);
 			//out = new OutputStreamWriter(socket.getOutputStream());
 			//in = new ObjectInputStream(socket.getInputStream());			
 
@@ -141,7 +139,7 @@ public class MatrixClient {
 				a[i][j]= Double.parseDouble(cell[j]);
 			}
 		}
-		sc.close();
+		
 	}
 
 
@@ -169,7 +167,7 @@ public class MatrixClient {
 		Scanner sc = new Scanner (System.in);
 		System.out.println("input the opreation you want ");
 		System.out.println("1 for add \n 2for multiply \n 3 for minus ");
-		System.out.println("4 for check status \n 5 for get result");
+		System.out.println("4 for check status \n 5 for get result \n 0 for stop work and print bill");
 		int op = sc.nextInt();
 		if(op == 1 || op ==2 || op == 3) {
 			System.out.println("do you want to input the matrix by hand?");
@@ -190,9 +188,7 @@ public class MatrixClient {
 		SendWork send = new SendWork(op,a,b,id);
 		System.out.println("send created");
 		ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream());
-		
-		
-		
+		System.out.println("a");
 		out.writeObject(send);
 		System.out.println("send finished");
 		if(op == 4 || op == 5) {
@@ -205,15 +201,20 @@ public class MatrixClient {
 			}
 			else if(res.stat == Status.successful_calculation) {
 				print_2D(res.answer);
+				DataInputStream dis = new DataInputStream(socket.getInputStream());
+				System.out.println("here is your bill" + dis.readDouble());
 			}
 			
 			in.close();
 			
-		}else {
+		}else if(op != 0){
 			DataInputStream dis = new DataInputStream(socket.getInputStream());
 			output = dis.readUTF();
 			System.out.println("this is your work id, plz keep it"+output);
 			dis.close();
+		}else {
+			DataInputStream dis = new DataInputStream(socket.getInputStream());
+			System.out.println("here is your bill" + dis.readDouble());
 		}
 		out.close();
 		socket.close();
