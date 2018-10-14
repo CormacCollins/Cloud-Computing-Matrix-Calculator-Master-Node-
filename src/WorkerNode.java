@@ -60,11 +60,7 @@ public class WorkerNode {
 		
 		try {
 			serverSocket = new ServerSocket(port);
-			while(true) {
-				
-				
-
-				
+			while(true) {		
 				Socket socket = serverSocket.accept();
 				DataInputStream dis = new DataInputStream(socket.getInputStream());
 			    if(dis.readBoolean()) {
@@ -80,6 +76,7 @@ public class WorkerNode {
 			    }else {
 			    	DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
 			    	dos.writeInt(workerNode.workList.size());
+			    	System.out.println("get load");
 			    }
 				
 			}
