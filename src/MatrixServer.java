@@ -48,7 +48,7 @@ public class MatrixServer {
 	private static DataInputStream dis = null;
 	boolean isTesting = false;
 	boolean testingComplete = false;
-	private final static double BILLRATE = 1/600000;//
+	private final static double BILLRATE = 1/600;//
 	private static int size;
 	private static MatrixResult res;
 	private static String op;
@@ -200,13 +200,16 @@ public class MatrixServer {
 					
 					ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream());
 					out.writeObject(res);
+					DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
+					long startTime =bill.get(Integer.parseInt(rec.id));
+					NodeMaster temp = nodeMasterList.get(Integer.parseInt(rec.id));
+					double bills = (temp.endTime-startTime)*BILLRATE;
 				}else if (rec.op == 0) {
 					DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
-					double bills =bill.get(Integer.parseInt(rec.id));
-					bills = (System.currentTimeMillis() - bills)*BILLRATE;
-					dos.writeDouble(bills);
-					nodeMasterList.remove(Integer.parseInt(rec.id));
-					bill.remove(Integer.parseInt(rec.id));
+					long startTime =bill.get(Integer.parseInt(rec.id));
+					NodeMaster temp = nodeMasterList.get(Integer.parseInt(rec.id));
+					double bills = (temp.endTime-startTime)*BILLRATE;
+					
 				}
 			
 
@@ -240,6 +243,8 @@ public class MatrixServer {
 			return "multiplication";
 		case 3:
 			return "subtraction";
+		case 0:
+			return "delete";
 		default:
 			return null;
 		}

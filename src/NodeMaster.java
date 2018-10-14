@@ -27,6 +27,7 @@ public class NodeMaster extends Thread {
 	private Queue<int[]> jobQueue;
 	private int masterID;
 	private Socket socket;
+	public long endTime;
 	Socket so;
 	//added data structure for cloud comp version
 	// -------------------------------------------
@@ -78,6 +79,10 @@ public class NodeMaster extends Thread {
 			System.out.println("...");
 			// TODO: handle exception
 		}
+		if(jobIsFinished()) {
+			endTime = System.currentTimeMillis();
+		}
+		
 
 	}
 	
@@ -113,13 +118,20 @@ public class NodeMaster extends Thread {
 
 	
 	public void run()  {
+		if(operationType != "delete") {
 		System.out.println("Node Master - " + masterID + " allocating work" );
 		allocateWork();	
 //		System.out.println("Answer: ");
 //		SimpleMatrix simpleMatrix = new SimpleMatrix(answer);
 //		simpleMatrix.print();
 		System.out.println("Node Master - " + masterID + " finished sending work" );
-		
+		}else {
+			jobQueueAccess().clear();
+			inProgressJobsAccess().clear();
+			endTime = System.currentTimeMillis();
+			
+			
+		}
 		//will wait until it's answer has been accessed and taken
 		//waitForAnswerRetrieval();
 	}	
@@ -220,7 +232,6 @@ public class NodeMaster extends Thread {
 				bestWorker = WorkerInfo.getAvailableNode();
 			}
 			so = new Socket(bestWorker, 1024);
-			
 			DataOutputStream dos = new DataOutputStream(so.getOutputStream());
 			dos.writeBoolean(true);
 

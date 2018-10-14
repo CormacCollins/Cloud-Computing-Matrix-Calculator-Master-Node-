@@ -56,8 +56,7 @@ public class MatrixClient {
 		RESULT, //5
 		PartialSum, //6 - Use by the calcWOrkers for when the Node's send work
 		Testing, //7
-		GetTestResults, //8
-		GetWorkerStatus //9
+		GetTestResults //8
 	}
 	BinaryOperation operation;
 	//setup client with requested port
@@ -68,8 +67,7 @@ public class MatrixClient {
 	public MatrixClient(String hostname, int port) {		
 		try {
 			// create a socket
-			socket = new Socket("104.215.191.245", 1024);
-			socket.setSoTimeout(10000);
+			socket = new Socket("137.116.128.225", port);
 			//out = new OutputStreamWriter(socket.getOutputStream());
 			//in = new ObjectInputStream(socket.getInputStream());			
 
@@ -112,14 +110,15 @@ public class MatrixClient {
 			}
 		}
 		// print matrix to check the result
-		print_2D(a);
+		//print_2D(a);
 		System.out.println("Created matrix \n");
-		print_2D(b);
+		//print_2D(b);
 
 	}
 	
 	public static void print_2D(double[][] c2) {
 		for (double[] row : c2)
+
 			// converting each row as string
 			// and then printing in a separate line
 			System.out.println(Arrays.toString(row));
@@ -128,21 +127,20 @@ public class MatrixClient {
 	
 
 	// input matrix by hand 
-	public static void TypeMatrix(int size,double[][] a,Scanner sc) {
-		
+	public static void TypeMatrix(int size,double[][] a) {
+		Scanner sc = new Scanner(System.in);
 		a = new double[size][size];	
 		System.out.println("enter the matrix you want, ','for divide each element,and';'for switch row ");
-		
+		String input = sc.nextLine();
+		String[] row = input.split(";");
 		for(int i = 0;i<size;i++) {
-			
+			String[] cell = row[i].split(",");
 			for(int j = 0;j<size;j++) {
-				a[i][j]= sc.nextDouble();
+				a[i][j]= Double.parseDouble(cell[j]);
 			}
 		}
-		print_2D(a);
 		
 	}
-		 
 
 
 	// main function for send and recive 
@@ -169,7 +167,7 @@ public class MatrixClient {
 		Scanner sc = new Scanner (System.in);
 		System.out.println("input the opreation you want ");
 		System.out.println("1 for add \n 2for multiply \n 3 for minus ");
-		System.out.println("4 for check status \n 5 for get result \n 0 for stop and bill");
+		System.out.println("4 for check status \n 5 for get result \n 0 for stop work and print bill");
 		int op = sc.nextInt();
 		if(op == 1 || op ==2 || op == 3) {
 			System.out.println("do you want to input the matrix by hand?");
@@ -177,25 +175,20 @@ public class MatrixClient {
 			System.out.println("inter the size of matrix you want");
 			matrixSize = sc.nextInt();
 			if(temp) {
-				TypeMatrix(matrixSize,a,sc);
-				
-				
-				TypeMatrix(matrixSize,b,sc);
-				
+				TypeMatrix(matrixSize,a);
+				TypeMatrix(matrixSize,b);
 			}else {
 				 
 				CreateMatrix(matrixSize);
 			}
-		}else if (op ==4 || op == 5 || op == 8 || op ==0) {
+		}else if (op ==4 || op == 5 || op == 8) {
 			System.out.println("enter the id");
 			id = Integer.toString(sc.nextInt());
 		}
 		SendWork send = new SendWork(op,a,b,id);
 		System.out.println("send created");
 		ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream());
-		
-		
-		
+		System.out.println("a");
 		out.writeObject(send);
 		System.out.println("send finished");
 		if(op == 4 || op == 5) {
@@ -208,21 +201,20 @@ public class MatrixClient {
 			}
 			else if(res.stat == Status.successful_calculation) {
 				print_2D(res.answer);
+				DataInputStream dis = new DataInputStream(socket.getInputStream());
+				System.out.println("here is your bill" + dis.readDouble());
 			}
 			
 			in.close();
 			
-		}else if(op == 0) {
-			DataInputStream dis = new DataInputStream(socket.getInputStream());
-			double bill = dis.readDouble();
-			System.out.println("here is your bill"+bill);
-			dis.close();
-		}
-		else {
+		}else if(op != 0){
 			DataInputStream dis = new DataInputStream(socket.getInputStream());
 			output = dis.readUTF();
 			System.out.println("this is your work id, plz keep it"+output);
 			dis.close();
+		}else {
+			DataInputStream dis = new DataInputStream(socket.getInputStream());
+			System.out.println("here is your bill" + dis.readDouble());
 		}
 		out.close();
 		socket.close();
