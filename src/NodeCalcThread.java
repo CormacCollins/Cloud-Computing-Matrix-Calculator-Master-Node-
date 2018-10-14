@@ -31,6 +31,7 @@ public class NodeCalcThread extends Thread  {
 
 	    private double[][] calcWork(SendWork s){
 			int rowLength = s.b[0].length;
+			System.out.println("Node working on work id: " +  s.id);
 			//int heightLength = s.b.length;
 			double[][] answer;
 			switch (s.op) {
@@ -64,7 +65,7 @@ public class NodeCalcThread extends Thread  {
 //				SimpleMatrix b1Matrix = new SimpleMatrix(s.b);
 //				b1Matrix.print();
 				
-				System.out.println("Row length: " +  rowLength);
+				
 				for(int i = 0; i < rowLength; i++) {
 					double ans = 0;
 					for(int j = 0; j < rowLength; j++) {
