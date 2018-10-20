@@ -360,6 +360,14 @@ public class NodeMaster extends Thread {
 		 
 		 return arr;
 	 }
+	
+	public double stopWork() {
+		jobQueue.clear();
+		if(inProgressJobsAccess().isEmpty()) {	
+			inProgressJobsAccess().clear();
+		}
+		return System.currentTimeMillis();
+	}
 
 	
 
