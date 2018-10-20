@@ -188,7 +188,6 @@ public class MatrixClient {
 		SendWork send = new SendWork(op,a,b,id);
 		System.out.println("send created");
 		ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream());
-		System.out.println("a");
 		out.writeObject(send);
 		System.out.println("send finished");
 		if(op == 4 || op == 5) {
