@@ -18,7 +18,20 @@ public class NodeCalcThread extends Thread  {
 	    	while(true) {
 	    		SendWork w = nextJob();
 		    	if(w != null) {
-			    	double[][] ans = calcWork(w);
+			    	
+		    		double[][] ans = null;
+		    		int tries = 5;
+		    		while(tries > 0) {
+			    		try {
+			    			ans = calcWork(w);
+			    			tries = 0;
+			    		}catch (Exception e) {
+							// TODO: handle exception
+			    			System.out.println("Error in calc retrying...");
+			    			tries--;
+						}
+		    		}
+			    	
 			    	wNode.sendFinishedWork(ans, w.id);
 		    	}
 	    	}
@@ -41,12 +54,12 @@ public class NodeCalcThread extends Thread  {
 			//int heightLength = s.b.length;
 			double[][] answer;
 			System.out.println("worker node id "+ s.id);
-			try {
-				Thread.sleep(100);
-			} catch (InterruptedException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
+//			try {
+//				Thread.sleep(100);
+//			} catch (InterruptedException e) {
+//				// TODO Auto-generated catch block
+//				e.printStackTrace();
+//			}
 			switch (s.op) {
 			case 1:
 				//System.out.println("Calculating a = ");

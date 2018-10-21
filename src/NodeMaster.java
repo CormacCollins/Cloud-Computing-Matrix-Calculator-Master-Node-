@@ -31,7 +31,7 @@ public class NodeMaster extends Thread {
 	Socket so;
 	//added data structure for cloud comp version
 	// -------------------------------------------
-	private boolean localTesting = true;
+	private boolean localTesting = false;
 	
 	// for number of tasks that make up a job
 	private int taskIDCount = 0;
@@ -41,7 +41,7 @@ public class NodeMaster extends Thread {
 
 	Map<String, Integer[]> workerJobMap = new HashMap<String, Integer[]>();
 	Map<String, int[]> inProgressJobs = new HashMap<String, int[]>();
-	private boolean workHasBeenAllocated = false;
+	public boolean workHasBeenAllocated = false;
 	
 	//arbitrary peak for load balancing - to be changeds
 	int PEAK_LOAD = 100;
@@ -93,6 +93,14 @@ public class NodeMaster extends Thread {
 	
 	private synchronized Map<String, int[]> inProgressJobsAccess() {
 		return inProgressJobs;
+	}
+	
+	public void redoJob(String id) {
+		int[] indices = inProgressJobsAccess().get(id);
+		jobQueueAccess().add(indices);
+		inProgressJobsAccess().remove(id);
+		if(workHasBeenAllocated) {
+			allocateWork();}
 	}
 	
 	//will likely need more checks
@@ -231,7 +239,10 @@ public class NodeMaster extends Thread {
 			break;
 		}
 		
-		endTasks();
+		
+		if(isDead) {
+			endTasks();
+		}
 		workHasBeenAllocated = true;
 			
 	}

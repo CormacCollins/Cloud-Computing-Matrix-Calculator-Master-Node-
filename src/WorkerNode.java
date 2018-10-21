@@ -27,7 +27,7 @@ public class WorkerNode {
 
 	public static void main(String[] args) {
 		
-		boolean localTesting = true;
+		boolean localTesting = false;
 		int port ;
 		if(!localTesting) {
 			port = 1024;

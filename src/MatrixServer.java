@@ -160,7 +160,17 @@ public class MatrixServer {
 					}
 					else {
 						System.out.println("Writing to nodeMaster id: " + idStrings[0]);
-						nodeMaster.addAnswer(rec.a, rec.id);
+						
+						if(rec.a == null) {		
+							System.out.println("Null answer, resubmitting task");
+								nodeMaster.redoJob(rec.id);
+							
+						}
+						else {
+
+							nodeMaster.addAnswer(rec.a, rec.id);
+						}
+						
 					}
 					
 				}				
@@ -228,8 +238,8 @@ public class MatrixServer {
 							ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream());
 							out.writeObject(res);
 							DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
-							long startTime =bill.get(Integer.parseInt(rec.id));
-							NodeMaster temp = nodeMasterList.get(Integer.parseInt(rec.id));
+							long startTime =bill.get(jobId);
+							NodeMaster temp = nodeMasterList.get(jobId);
 							double bills = (temp.endTime-startTime)*BILLRATE;
 							dos.writeDouble(bills);
 							bill.remove(Integer.parseInt(rec.id));

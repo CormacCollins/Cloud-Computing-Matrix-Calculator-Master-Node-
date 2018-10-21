@@ -45,7 +45,7 @@ public class MatrixClient {
 	
 	private int id;
 
-	private boolean localTesting = true;
+	private boolean localTesting = false;
 	private boolean noServerResponse = false;
 
 			

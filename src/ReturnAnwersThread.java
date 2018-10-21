@@ -16,7 +16,7 @@ public class ReturnAnwersThread extends Thread  {
 		ObjectOutputStream out;	
     	Socket socket;
 		SendWork wReturn;
-		private boolean localTesting = true;
+		private boolean localTesting = false;
 		public ReturnAnwersThread(SendWork rtAnswer) {
 			wReturn = rtAnswer;
 		}
