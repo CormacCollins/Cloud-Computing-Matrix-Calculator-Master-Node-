@@ -30,6 +30,12 @@ public class NodeCalcThread extends Thread  {
 	    }
 
 	    private double[][] calcWork(SendWork s){
+	    	try {
+				Thread.sleep(10);
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 			int rowLength = s.b[0].length;
 			System.out.println("Node working on work id: " +  s.id);
 			//int heightLength = s.b.length;

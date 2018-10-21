@@ -158,14 +158,14 @@ public class MatrixServer {
 					int key = uniqueIdCount++;
 					long time = System.currentTimeMillis();
 					bill.put(key, time);
-					System.out.println("Matrices recieved: ");
-						
-					SimpleMatrix aMatrix = new SimpleMatrix(rec.a);
-					SimpleMatrix bMatrix = new SimpleMatrix(rec.b);
-					aMatrix.print();
-					bMatrix.print();
-					
-					
+//					System.out.println("Matrices recieved: ");
+//						
+//					SimpleMatrix aMatrix = new SimpleMatrix(rec.a);
+//					SimpleMatrix bMatrix = new SimpleMatrix(rec.b);
+//					aMatrix.print();
+//					bMatrix.print();
+//					
+//					
 					
 					
 					

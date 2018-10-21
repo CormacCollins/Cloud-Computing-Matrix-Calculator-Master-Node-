@@ -165,13 +165,13 @@ public class MatrixClient {
 //			System.out.println("this is your work id, plz keep it"+output);
 		
 		Scanner sc = new Scanner (System.in);
-		System.out.println("input the opreation you want ");
+		System.out.println("input the operation you want ");
 		System.out.println("1 for add \n 2for multiply \n 3 for minus ");
 		System.out.println("4 for check status \n 5 for get result \n 0 for stop work and print bill");
 		int op = sc.nextInt();
 		if(op == 1 || op ==2 || op == 3) {
-			System.out.println("do you want to input the matrix by hand?");
-			boolean temp = sc.nextBoolean();
+			System.out.println("do you want to input the matrix by hand (y or n)?");
+			boolean temp = sc.next().charAt(0) == 'y' ? true : false;
 			System.out.println("inter the size of matrix you want");
 			matrixSize = sc.nextInt();
 			if(temp) {
