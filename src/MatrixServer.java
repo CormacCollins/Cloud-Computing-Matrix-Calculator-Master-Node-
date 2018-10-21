@@ -63,6 +63,7 @@ public class MatrixServer {
 		return 1;
 	}
 
+	@SuppressWarnings("deprecation")
 	public static void main(String[] args) throws ClassNotFoundException {
 		
 		Map<Integer, SimpleMatrix> testAnswers = new HashMap<Integer, SimpleMatrix>();
@@ -159,12 +160,6 @@ public class MatrixServer {
 					long time = System.currentTimeMillis();
 					bill.put(key, time);
 					System.out.println("Matrices recieved: ");
-						
-					SimpleMatrix aMatrix = new SimpleMatrix(rec.a);
-					SimpleMatrix bMatrix = new SimpleMatrix(rec.b);
-					aMatrix.print();
-					bMatrix.print();
-					
 					
 					
 					
@@ -207,10 +202,8 @@ public class MatrixServer {
 					dos.writeDouble(bills);
 				}else if (rec.op == 0) {
 					DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
-					long startTime =bill.get(Integer.parseInt(rec.id));
-					NodeMaster temp = nodeMasterList.get(Integer.parseInt(rec.id));
-					double bills = (temp.endTime-startTime)*BILLRATE;
-					dos.writeDouble(bills);
+					NodeMaster temp = nodeMasterList.remove(Integer.parseInt(rec.id));	
+					dos.writeDouble((temp.stopWork()-bill.get(Integer.parseInt(rec.id)))*BILLRATE);
 					
 				}
 			
@@ -245,8 +238,6 @@ public class MatrixServer {
 			return "multiplication";
 		case 3:
 			return "subtraction";
-		case 0:
-			return "delete";
 		default:
 			return null;
 		}
