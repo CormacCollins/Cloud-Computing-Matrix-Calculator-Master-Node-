@@ -211,30 +211,16 @@ public class MatrixServer {
 					MatrixResult res;
 					int jobId = Integer.parseInt(rec.id);
 					// use the id to find the result
-					if(nodeMasterList.containsKey(jobId)) {
+					if(nodeMasterList.containsKey(jobId) && bill.containsKey(jobId)) {
 						if(nodeMasterIsFinished(jobId)) {
 							answer = getAnswer(jobId);
 							status = Status.successful_calculation;
-						}
-						else {
-							answer = null;
-							status = Status.not_finished;
-						}
-						
-					}
-					else {
-						answer = null;
-						status = Status.invalid_paramaters;
-					}
-					
-					if(rec.op == 4) {
-						res = new MatrixResult(null, status);
-						 ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream());
-						 out.writeObject(res);
-						
-					}else {
-						if(nodeMasterList.containsKey(jobId)) {
-							res = new MatrixResult(answer, status);
+							if(rec.op == 5) {
+								res = new MatrixResult(answer, status);
+							}
+							else {
+								res = new MatrixResult(null, status);
+							}
 							ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream());
 							out.writeObject(res);
 							DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
@@ -245,7 +231,8 @@ public class MatrixServer {
 							bill.remove(Integer.parseInt(rec.id));
 						}
 						else {
-							res = new MatrixResult(answer, status);
+							status = Status.not_finished;
+							res = new MatrixResult(null, status);
 							ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream());
 							out.writeObject(res);
 							DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
@@ -253,9 +240,56 @@ public class MatrixServer {
 							//NodeMaster temp = nodeMasterList.get(Integer.parseInt(rec.id));
 							//double bills = (temp.endTime-startTime)*BILLRATE;
 							dos.writeDouble(-1.0);
-							//bill.remove(Integer.parseInt(rec.id));
 						}
+						
 					}
+					else {
+						res = new MatrixResult(null, Status.invalid_paramaters);
+						ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream());
+						out.writeObject(res);
+						DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
+						//long startTime =bill.get(Integer.parseInt(rec.id));
+						//NodeMaster temp = nodeMasterList.get(Integer.parseInt(rec.id));
+						//double bills = (temp.endTime-startTime)*BILLRATE;
+						dos.writeDouble(-1.0);
+					}
+					
+//					if(rec.op == 4) {
+//						res = new MatrixResult(null, Status.invalid_paramaters);
+//						ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream());
+//						out.writeObject(res);
+//						DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
+//						//long startTime =bill.get(Integer.parseInt(rec.id));
+//						//NodeMaster temp = nodeMasterList.get(Integer.parseInt(rec.id));
+//						//double bills = (temp.endTime-startTime)*BILLRATE;
+//						dos.writeDouble(-1.0);
+//						
+//					}
+//					else if(rec.op == 5) {
+//						
+//						if(nodeMasterList.containsKey(jobId) && bill.containsKey(jobId)) {
+//							res = new MatrixResult(answer, status);
+//							ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream());
+//							out.writeObject(res);
+//							DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
+//							long startTime =bill.get(jobId);
+//							NodeMaster temp = nodeMasterList.get(jobId);
+//							double bills = (temp.endTime-startTime)*BILLRATE;
+//							dos.writeDouble(bills);
+//							bill.remove(Integer.parseInt(rec.id));
+//						}
+//						else {
+//							res = new MatrixResult(null, Status.invalid_paramaters);
+//							ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream());
+//							out.writeObject(res);
+//							DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
+//							//long startTime =bill.get(Integer.parseInt(rec.id));
+//							//NodeMaster temp = nodeMasterList.get(Integer.parseInt(rec.id));
+//							//double bills = (temp.endTime-startTime)*BILLRATE;
+//							dos.writeDouble(-1.0);
+//							//bill.remove(Integer.parseInt(rec.id));
+//						}
+//					}
 					
 						
 					
@@ -279,7 +313,7 @@ public class MatrixServer {
 						}
 						
 						temp.stopWork();
-						long t = temp.endTime;
+						long t = System.currentTimeMillis();
 						
 						long startTime = bill.get(Integer.parseInt(rec.id));
 						

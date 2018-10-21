@@ -5,6 +5,7 @@ import java.io.ObjectOutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.UnknownHostException;
+import java.sql.Time;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Map;
@@ -127,8 +128,7 @@ public class NodeMaster extends Thread {
 
 	
 	public void run()  {
-			if(operationType != "delete") {
-				System.out.println("Node Master - " + masterID + " allocating work" );
+			System.out.println("Node Master - " + masterID + " allocating work" );
 			
 			allocateWork();
 			
@@ -136,13 +136,7 @@ public class NodeMaster extends Thread {
 	//		SimpleMatrix simpleMatrix = new SimpleMatrix(answer);
 	//		simpleMatrix.print();
 			System.out.println("Node Master - " + masterID + " finished sending work" );
-			}else {
-				jobQueueAccess().clear();
-				inProgressJobsAccess().clear();
-				endTime = System.currentTimeMillis();
-				
-				
-			}
+
 	}	
 	
 
@@ -244,6 +238,7 @@ public class NodeMaster extends Thread {
 			endTasks();
 		}
 		workHasBeenAllocated = true;
+		endTime = System.currentTimeMillis();
 			
 	}
 

@@ -286,7 +286,7 @@ public class MatrixClient {
 			}
 			Double d = dis.readDouble();
 			//System.out.println("here is your bill: " + d + " dollars");
-			if(d <= 0) {
+			if(d == -1) {
 				System.out.println("No such ID exisits");
 			}
 			else {
