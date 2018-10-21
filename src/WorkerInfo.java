@@ -17,7 +17,7 @@ public class WorkerInfo {
 			"13.67.77.181",
 			"13.67.71.84",
 			"13.76.195.39"
-			
+
 	};
 	private static Socket s;
 	
@@ -51,13 +51,11 @@ public class WorkerInfo {
 	    String bestWorker = null;
 		for(String temp : ipList ) {
 			try {
-				//System.out.println("1");
 				s = new Socket(temp,1024);
 				DataOutputStream dos = new DataOutputStream(s.getOutputStream());
 				dos.writeBoolean(false);// ask worker to get the load 
 				DataInputStream dis = new DataInputStream(s.getInputStream());
 				int currentLoad = dis.readInt();
-				//System.out.println("get corrent load ");
 				if(currentLoad<largestLoad) {
 					largestLoad = currentLoad;
 					bestWorker = temp;

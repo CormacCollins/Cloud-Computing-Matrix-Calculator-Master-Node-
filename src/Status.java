@@ -6,5 +6,6 @@ public enum Status {
 	invalid_paramaters,
 	calc_error,
 	client_request_read_error,
-	not_finished
+	not_finished,
+	does_not_exist
 }

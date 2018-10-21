@@ -40,6 +40,13 @@ public class NodeCalcThread extends Thread  {
 			System.out.println("Node working on work id: " +  s.id);
 			//int heightLength = s.b.length;
 			double[][] answer;
+			System.out.println("worker node id "+ s.id);
+			try {
+				Thread.sleep(100);
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 			switch (s.op) {
 			case 1:
 				//System.out.println("Calculating a = ");

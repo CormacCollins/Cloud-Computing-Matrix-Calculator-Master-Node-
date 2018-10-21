@@ -31,7 +31,7 @@ public class NodeMaster extends Thread {
 	Socket so;
 	//added data structure for cloud comp version
 	// -------------------------------------------
-	
+	private boolean localTesting = true;
 	
 	// for number of tasks that make up a job
 	private int taskIDCount = 0;
@@ -45,6 +45,7 @@ public class NodeMaster extends Thread {
 	
 	//arbitrary peak for load balancing - to be changeds
 	int PEAK_LOAD = 100;
+	boolean isDead = false;
 	
 	
 	// ---------------------------------------------------------------
@@ -118,22 +119,22 @@ public class NodeMaster extends Thread {
 
 	
 	public void run()  {
-		if(operationType != "delete") {
-		System.out.println("Node Master - " + masterID + " allocating work" );
-		allocateWork();	
-//		System.out.println("Answer: ");
-//		SimpleMatrix simpleMatrix = new SimpleMatrix(answer);
-//		simpleMatrix.print();
-		System.out.println("Node Master - " + masterID + " finished sending work" );
-		}else {
-			jobQueueAccess().clear();
-			inProgressJobsAccess().clear();
-			endTime = System.currentTimeMillis();
+			if(operationType != "delete") {
+				System.out.println("Node Master - " + masterID + " allocating work" );
 			
+			allocateWork();
 			
-		}
-		//will wait until it's answer has been accessed and taken
-		//waitForAnswerRetrieval();
+	//		System.out.println("Answer: ");
+	//		SimpleMatrix simpleMatrix = new SimpleMatrix(answer);
+	//		simpleMatrix.print();
+			System.out.println("Node Master - " + masterID + " finished sending work" );
+			}else {
+				jobQueueAccess().clear();
+				inProgressJobsAccess().clear();
+				endTime = System.currentTimeMillis();
+				
+				
+			}
 	}	
 	
 
@@ -159,6 +160,11 @@ public class NodeMaster extends Thread {
 		switch (operationType) {
 		case "multiplication":
 				while(!jobQueueAccess().isEmpty()) {
+					
+					if(isDead) {
+						break;
+					}
+					
 					int[] indices = jobQueue.peek();
 					jobQueueAccess().remove();
 					//getting row from A and full matrix from B
@@ -176,6 +182,11 @@ public class NodeMaster extends Thread {
 			break;
 		case "addition":
 			while(!jobQueueAccess().isEmpty()) {
+				
+				if(isDead) {
+					break;
+				}
+				
 				int[] indices = jobQueueAccess().peek();
 				jobQueueAccess().remove();
 				//getting row from A and full matrix from B
@@ -194,6 +205,11 @@ public class NodeMaster extends Thread {
 			break;
 		case "subtraction":
 			while(!jobQueueAccess().isEmpty()) {
+				
+				if(isDead) {
+					break;
+				}
+				
 				int[] indices = jobQueueAccess().peek();
 				jobQueueAccess().remove();
 				//getting row from A and full matrix from B
@@ -215,23 +231,29 @@ public class NodeMaster extends Thread {
 			break;
 		}
 		
+		endTasks();
 		workHasBeenAllocated = true;
 			
 	}
 
 	private void sendToNode(SendWork s) {
-		
-		
-
 		try {
 			
 
 			String bestWorker = null;
 			//keep repeating the loop, until some worker are free now, it wont sent out 
-			while(bestWorker == null) {
-				bestWorker = WorkerInfo.getAvailableNode();
+			
+			if(!localTesting) {
+			
+				while(bestWorker == null) {
+					bestWorker = WorkerInfo.getAvailableNode();
+				}
+				so = new Socket(bestWorker, 1024);
 			}
-			so = new Socket(bestWorker, 1024);
+			else {
+				
+				so = new Socket("localhost", 1025);
+			}
 			DataOutputStream dos = new DataOutputStream(so.getOutputStream());
 			dos.writeBoolean(true);
 
@@ -360,6 +382,21 @@ public class NodeMaster extends Thread {
 		 
 		 return arr;
 	 }
+	
+	public void stopWork() {
+
+		endTime = System.currentTimeMillis();
+		isDead = true;
+//		if(inProgressJobsAccess().isEmpty()) {	
+//			inProgressJobsAccess().clear();
+//		}
+	}
+	
+	private void endTasks() {
+		jobQueue.clear();
+		inProgressJobs.clear();
+	}
+
 	
 
 	

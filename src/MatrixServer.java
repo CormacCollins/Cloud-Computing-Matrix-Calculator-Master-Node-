@@ -18,6 +18,7 @@ import java.io.Serializable;
 import java.lang.reflect.Executable;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.security.spec.ECField;
 import java.sql.Date;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -35,10 +36,7 @@ import java.time.*;
 
 public class MatrixServer {
 
-	public enum BinaryOperation {
-		ADD, MUTIPLY, SUBSTRACT, STATUS
-	}
-
+	
 	protected Socket socket;
 	// unique id that's incremented for each use
 	static int uniqueIdCount = 0;
@@ -48,10 +46,10 @@ public class MatrixServer {
 	private static DataInputStream dis = null;
 	boolean isTesting = false;
 	boolean testingComplete = false;
-	private final static double BILLRATE = 1/600;//
 	private static int size;
 	private static MatrixResult res;
 	private static String op;
+	private final static double BILLRATE =10;
 	
 	//need to keep track of used ports as the nodeMaster will be using ports on the same machine
 	private static int portCount;
@@ -63,6 +61,7 @@ public class MatrixServer {
 		return 1;
 	}
 
+	@SuppressWarnings("deprecation")
 	public static void main(String[] args) throws ClassNotFoundException {
 		
 		Map<Integer, SimpleMatrix> testAnswers = new HashMap<Integer, SimpleMatrix>();
@@ -79,6 +78,7 @@ public class MatrixServer {
 				port = Integer.parseInt(args[0]);
 				workerCount = Integer.parseInt(args[1]);
 			} catch (Exception e) {
+				
 			}
 		} else {
 			// System.out.println("Default port: " + port + " and deafult workerCount " +
@@ -99,7 +99,7 @@ public class MatrixServer {
 		try {
 			serverSocket = new ServerSocket(port);
 			while (true) {
-
+				System.out.println("////");
 				Socket socket = serverSocket.accept();
 				System.out.println("Socket number " + count + " open.");
 
@@ -110,38 +110,41 @@ public class MatrixServer {
 				
 
 				System.out.println("new Socket set");
-
-				ObjectInputStream in = new ObjectInputStream(socket.getInputStream());
+				ObjectInputStream in ;
+				try {
+					in = new ObjectInputStream(socket.getInputStream());
+				}catch(IOException e){
+					System.out.println("Client cancelled connection");
+					continue; 
+				}
+				
 				SendWork rec = (SendWork) in.readObject();
 
+				if(nodeMasterList.isEmpty()) {
+					int id = rec.op;
+					if(id == 0 || id == 4 || id ==5) {
+						
+						double[][] answer;
+						Status status;
+						MatrixResult res;
+						
+						 res = new MatrixResult(null,Status.invalid_paramaters);
+						 ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream());
+						 out.writeObject(res);
+						
+						System.out.println("Querying a job that doesn't exist");
+						count++;
+						continue;
+					}
+				}
+				
+				
 				if(rec.op == 7) {	
 						testAnswers = matrixServer.fullCalculationTest();
 						int key = uniqueIdCount++;
 						DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
 						dos.writeUTF(Integer.toString(key));
 					
-				}
-				else if(rec.op == 8) {
-					System.out.println("Completed jobs:");
-					for(int i = 0; i < nodeMasterList.size(); i++) {
-						NodeMaster nMaster = getNodeMasterByID(i);
-						if(nMaster.jobIsFinished()) {
-							SimpleMatrix matrixAns = new SimpleMatrix(nMaster.getAnswer());
-							SimpleMatrix testAns = testAnswers.get(i);
-							System.out.println("Correct ans");
-							testAns.print();
-							boolean res = testAns.isIdentical(matrixAns, 1);
-							String c = res ? "passed" : "failed";
-							System.out.println("NodeMaster " + i + " answer " + c);
-							System.out.println("Server answer");
-							matrixAns.print();
-						}
-						else {
-							System.out.println("NodeMaster " + i + " not finished job yet");
-						}
-						
-					}
-				
 				}
 				//if it is work being sent from a worker
 				//only have matrix a with answer 
@@ -150,11 +153,19 @@ public class MatrixServer {
 					System.out.println("Partial answer recieved");
 					String[] idStrings = rec.id.split(":");
 					NodeMaster nodeMaster = getNodeMasterByID(Integer.parseInt(idStrings[0]));
-					System.out.println("Writing to nodeMaster id: " + idStrings[0]);
-					nodeMaster.addAnswer(rec.a, rec.id);
+					if(nodeMaster == null) {
+						System.out.println("Node Master killed - work result thrown away");
+						continue;
+						
+					}
+					else {
+						System.out.println("Writing to nodeMaster id: " + idStrings[0]);
+						nodeMaster.addAnswer(rec.a, rec.id);
+					}
+					
 				}				
 				else if (rec.op == 1 || rec.op == 2 || rec.op == 3) {
-					System.out.println("Recieved request");
+					System.out.println("Matrices recieved: ");
 					int key = uniqueIdCount++;
 					long time = System.currentTimeMillis();
 					bill.put(key, time);
@@ -166,6 +177,9 @@ public class MatrixServer {
 //					bMatrix.print();
 //					
 //					
+					
+					
+
 					
 					
 					
@@ -184,32 +198,103 @@ public class MatrixServer {
 				} else if (rec.op == 5 || rec.op == 4) {
 					double[][] answer;
 					Status status;
+					MatrixResult res;
 					int jobId = Integer.parseInt(rec.id);
 					// use the id to find the result
-					if(nodeMasterIsFinished(jobId)) {
-						answer = getAnswer(jobId);
-						status = Status.successful_calculation;
+					if(nodeMasterList.containsKey(jobId)) {
+						if(nodeMasterIsFinished(jobId)) {
+							answer = getAnswer(jobId);
+							status = Status.successful_calculation;
+						}
+						else {
+							answer = null;
+							status = Status.not_finished;
+						}
 						
 					}
 					else {
 						answer = null;
-						status = Status.not_finished;
+						status = Status.invalid_paramaters;
 					}
-					MatrixResult res = new MatrixResult(answer, status);
+					
+					if(rec.op == 4) {
+						res = new MatrixResult(null, status);
+						 ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream());
+						 out.writeObject(res);
+						
+					}else {
+						if(nodeMasterList.containsKey(jobId)) {
+							res = new MatrixResult(answer, status);
+							ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream());
+							out.writeObject(res);
+							DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
+							long startTime =bill.get(Integer.parseInt(rec.id));
+							NodeMaster temp = nodeMasterList.get(Integer.parseInt(rec.id));
+							double bills = (temp.endTime-startTime)*BILLRATE;
+							dos.writeDouble(bills);
+							bill.remove(Integer.parseInt(rec.id));
+						}
+						else {
+							res = new MatrixResult(answer, status);
+							ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream());
+							out.writeObject(res);
+							DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
+							//long startTime =bill.get(Integer.parseInt(rec.id));
+							//NodeMaster temp = nodeMasterList.get(Integer.parseInt(rec.id));
+							//double bills = (temp.endTime-startTime)*BILLRATE;
+							dos.writeDouble(-1.0);
+							//bill.remove(Integer.parseInt(rec.id));
+						}
+					}
+					
+						
 					
 					
-					ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream());
-					out.writeObject(res);
-					DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
-					long startTime =bill.get(Integer.parseInt(rec.id));
-					NodeMaster temp = nodeMasterList.get(Integer.parseInt(rec.id));
-					double bills = (temp.endTime-startTime)*BILLRATE;
+					
 				}else if (rec.op == 0) {
-					DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
-					long startTime =bill.get(Integer.parseInt(rec.id));
-					NodeMaster temp = nodeMasterList.get(Integer.parseInt(rec.id));
-					double bills = (temp.endTime-startTime)*BILLRATE;
+										
+					int id = Integer.parseInt(rec.id);
+					boolean b = bill.containsKey(id);
+					if(!b) {
+						System.out.println("No such job exists");
+						DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
+						dos.writeDouble(-1.0);
+					}
+					else {
+						DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
+						NodeMaster temp = nodeMasterList.remove(id);
+						
+						if(temp == null) {	
+							break;
+						}
+						
+						temp.stopWork();
+						long t = temp.endTime;
+						
+						long startTime = bill.get(Integer.parseInt(rec.id));
+						
+						double bills = (t-startTime)*BILLRATE;
+						dos.writeDouble(bills);
+						bill.remove(Integer.parseInt(rec.id));
+					}
 					
+					
+					
+//					if(b) {						
+//						DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
+//						NodeMaster temp = nodeMasterList.remove(id);
+//						temp.stopWork();
+//						long t = temp.endTime;
+//						long t2 = bill.get(id))*BILLRATE
+//						dos.writeDouble((t-);
+//					}
+//					else {
+//						DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
+//						dos.writeDouble(0.0);
+//					}
+						
+
+
 				}
 			
 
@@ -243,8 +328,6 @@ public class MatrixServer {
 			return "multiplication";
 		case 3:
 			return "subtraction";
-		case 0:
-			return "delete";
 		default:
 			return null;
 		}
@@ -274,7 +357,9 @@ public class MatrixServer {
 	// server
 	// request sent and: answer / info / outcome is returned
 	public static boolean nodeMasterIsFinished(int id) {
-		return getNodeMasterByID(id).jobIsFinished();
+		if(!nodeMasterList.isEmpty() && nodeMasterList.containsKey(id))
+			return getNodeMasterByID(id).jobIsFinished();
+		return false;
 	}
 
 	public static double[][] getAnswer(int id) {

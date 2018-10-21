@@ -16,6 +16,7 @@ public class ReturnAnwersThread extends Thread  {
 		ObjectOutputStream out;	
     	Socket socket;
 		SendWork wReturn;
+		private boolean localTesting = true;
 		public ReturnAnwersThread(SendWork rtAnswer) {
 			wReturn = rtAnswer;
 		}
@@ -27,20 +28,27 @@ public class ReturnAnwersThread extends Thread  {
 	    private void sendToServer(SendWork rtAnswer) {
 
 			try {
-				socket = new Socket("137.116.128.225", 1024);
+				
+				if(!localTesting) {
+				
+					socket = new Socket("137.116.128.225", 1024);
+				}
+				else {
+					socket = new Socket("localhost", 1024);
+				}
 			} catch (UnknownHostException e1) {
 				// TODO Auto-generated catch block
-				e1.printStackTrace();
+				//e1.printStackTrace();
 			} catch (IOException e1) {
 				// TODO Auto-generated catch block
-				e1.printStackTrace();
+				//e1.printStackTrace();
 			}
 	    	
 			try {
 				out = new ObjectOutputStream(socket.getOutputStream());
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
-				e.printStackTrace();
+				//e.printStackTrace();
 			}
 			
 			try {

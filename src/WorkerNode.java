@@ -25,13 +25,18 @@ public class WorkerNode {
 	private Queue<SendWork> workList = new LinkedList<SendWork>();
 	int[] workCompleted;
 
-	
-	
 	public static void main(String[] args) {
 		
-		
-		
-		int port = 1024;
+		boolean localTesting = true;
+		int port ;
+		if(!localTesting) {
+			port = 1024;
+		}
+		else {
+			port = 1025;
+		}
+			
+			
 		int socketPort = 1000;
 		int count = 0;
 		int workerCount = 1;
@@ -76,7 +81,7 @@ public class WorkerNode {
 			    }else {
 			    	DataOutputStream dos = new DataOutputStream(socket.getOutputStream());
 			    	dos.writeInt(workerNode.workList.size());
-			    	System.out.println("get load");
+			    	
 			    }
 				
 			}
@@ -118,7 +123,11 @@ public class WorkerNode {
 	public synchronized void sendFinishedWork(double[][] ans, String id) {
 		SendWork wReturn = new SendWork(6, ans, ans, id);
 		ReturnAnwersThread returnAnwersThread = new ReturnAnwersThread(wReturn);
-		returnAnwersThread.run();
+		try {
+			returnAnwersThread.run();
+		}catch(Exception e){
+			System.out.println("Failed to send finished work: " + id);
+		}
 	}
 	
 

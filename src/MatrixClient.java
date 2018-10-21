@@ -45,10 +45,12 @@ public class MatrixClient {
 	
 	private int id;
 
-
+	private boolean localTesting = true;
+	private boolean noServerResponse = false;
 
 			
 	public enum BinaryOperation{
+		CANCEL, //0
 		ADD,  //1
 		MUTIPLY,  //2
 		SUBSTRACT, //3
@@ -65,15 +67,29 @@ public class MatrixClient {
 	//setup client with requested port
 	//TODO: respond to each exception
 	public MatrixClient(String hostname, int port) {		
+		String s ="";
+		port = 1024;
 		try {
 			// create a socket
-			socket = new Socket("137.116.128.225", port);
+			
+			if(!localTesting) {
+				 s = "137.116.128.225";
+				socket = new Socket(s, port);
+				
+			}
+			else {
+				 s = "localhost";
+				socket = new Socket(s, 1024);
+			}
+			System.out.println("Using host/IP: " + s + " port: " + port);
 			//out = new OutputStreamWriter(socket.getOutputStream());
 			//in = new ObjectInputStream(socket.getInputStream());			
 
 		}
 		catch (Exception e) {
-			e.printStackTrace();
+			System.out.println("Connection not possible - nothing hosted at " + s + ", port  " + port );
+			//e.printStackTrace();
+			noServerResponse = true;
 		}
 
 	}
@@ -166,9 +182,16 @@ public class MatrixClient {
 		
 		Scanner sc = new Scanner (System.in);
 		System.out.println("input the operation you want ");
-		System.out.println("1 for add \n 2for multiply \n 3 for minus ");
-		System.out.println("4 for check status \n 5 for get result \n 0 for stop work and print bill");
+		System.out.println("1 for add \n2 for multiply \n3 for minus ");
+		System.out.println("4 for check status \n5 for get result \n0 for stop work and print bill");
 		int op = sc.nextInt();
+		
+//		String hostname = "137.116.128.225";
+//		int port = 1024;
+		
+
+		MatrixClient client = new MatrixClient("", 0);
+		
 		if(op == 1 || op ==2 || op == 3) {
 			System.out.println("do you want to input the matrix by hand (y or n)?");
 			boolean temp = sc.next().charAt(0) == 'y' ? true : false;
@@ -177,21 +200,23 @@ public class MatrixClient {
 			if(temp) {
 				TypeMatrix(matrixSize,a);
 				TypeMatrix(matrixSize,b);
-			}else {
-				 
+			}else {				 
 				CreateMatrix(matrixSize);
+				System.out.println("Matrix A: ");
+				print_2D(a);
+				System.out.println("Matrix B: ");
+				print_2D(b);
 			}
-		}else if (op ==4 || op == 5 || op == 8) {
+		}else if (op ==4 || op == 5 || op == 8 || op == 0) {
 			System.out.println("enter the id");
 			id = Integer.toString(sc.nextInt());
 		}
 		SendWork send = new SendWork(op,a,b,id);
-		System.out.println("send created");
 		ObjectOutputStream out = new ObjectOutputStream(socket.getOutputStream());
-		System.out.println("a");
 		out.writeObject(send);
-		System.out.println("send finished");
-		if(op == 4 || op == 5) {
+		//System.out.println("send finished");
+		if(op == 4) {
+			try {
 			ObjectInputStream in = new ObjectInputStream(socket.getInputStream());
 			MatrixResult res = (MatrixResult) in.readObject();
 			
@@ -199,22 +224,74 @@ public class MatrixClient {
 				System.out.println("Job not finished yet - please check later");
 				
 			}
+			else if(res.stat == Status.invalid_paramaters) {
+				System.out.println("No such ID exisits");
+				
+			}
+			else {
+				System.out.println("Result " + "for id " + id + " ready for retrieval");				
+			}
+			in.close();
+			}catch(Exception ex) {
+				System.out.println("Server cancelled the connection");
+				sc.close();
+				return;
+			}
+			
+		}else if(op == 5){
+			ObjectInputStream in;
+			MatrixResult res;
+			try {
+				 in = new ObjectInputStream(socket.getInputStream());
+				 res = (MatrixResult) in.readObject();
+				}catch(Exception ex) {
+					System.out.println("Server cancelled the connection");
+					return;
+				}
+				
+			
+			
+			if(res.stat == Status.not_finished) {
+				System.out.println("Job not finished yet - please check later");
+				
+			}
+			else if(res.stat == Status.invalid_paramaters) {
+				System.out.println("No such ID exisits");
+				
+			}
 			else if(res.stat == Status.successful_calculation) {
 				print_2D(res.answer);
 				DataInputStream dis = new DataInputStream(socket.getInputStream());
-				System.out.println("here is your bill" + dis.readDouble());
+				System.out.println("here is your bill: " + dis.readDouble() + " dollars");
 			}
-			
-			in.close();
-			
-		}else if(op != 0){
-			DataInputStream dis = new DataInputStream(socket.getInputStream());
-			output = dis.readUTF();
-			System.out.println("this is your work id, plz keep it"+output);
+		}
+		else if(op != 0){
+			DataInputStream dis;
+			try {
+			 dis = new DataInputStream(socket.getInputStream());
+			}catch(Exception e) {
+				System.out.println("Server cancelled the connection");
+				return;
+			}
+			 output = dis.readUTF();
+			System.out.println("this is your work id:  "+output);
 			dis.close();
 		}else {
-			DataInputStream dis = new DataInputStream(socket.getInputStream());
-			System.out.println("here is your bill" + dis.readDouble());
+			DataInputStream dis;
+			try {
+			 dis = new DataInputStream(socket.getInputStream());
+			}catch(Exception e) {
+				System.out.println("Server cancelled the connection");
+				return;
+			}
+			Double d = dis.readDouble();
+			//System.out.println("here is your bill: " + d + " dollars");
+			if(d <= 0) {
+				System.out.println("No such ID exisits");
+			}
+			else {
+				System.out.println("You have cancelled your calculation \nHere is your bill: " + d + " dollars");
+			}
 		}
 		out.close();
 		socket.close();
@@ -224,26 +301,7 @@ public class MatrixClient {
 
 	public static void main(String[] args) {
 		
-		String hostname = "137.116.128.225";
-		int port = 1024;
-		System.out.println("Using host/IP: " + hostname + " port: " + port);
 		
-
-//		if (args.length != 2) {
-//			System.out.println("Use the default setting...");
-//		} 
-//		else {
-//			//use cmd line args
-//			hostname = args[0];
-//			port = Integer.parseInt(args[1]);
-//			System.out.println("Using host/IP: " + hostname + " port: " + port);
-////			String s = args[3];
-////			System.out.println("Process " + s);
-//			
-//		}
-
-		String rowCol = "row_column";
-		MatrixClient client = new MatrixClient(hostname, port);
 		try {
 			sendObject();
 		}catch( IOException e ) {
